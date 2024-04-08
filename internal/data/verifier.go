@@ -2,6 +2,9 @@ package data
 
 import (
 	"context"
+
+	"github.com/carv-protocol/verifier/internal/infra/data/dal"
+	"github.com/carv-protocol/verifier/internal/infra/data/model"
 )
 
 type VerifierRepo struct {
@@ -14,6 +17,8 @@ func NewVerifierRepo(data *Data) *VerifierRepo {
 	}
 }
 
-func (r *VerifierRepo) ListAll(context.Context) (interface{}, error) {
-	return nil, nil
+func (r *VerifierRepo) ListAll(ctx context.Context) ([]*model.Verifier, error) {
+	q := dal.Use(r.data.DB(ctx)).Verifier
+
+	return q.WithContext(ctx).Where().Find()
 }

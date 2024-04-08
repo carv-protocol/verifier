@@ -2,8 +2,8 @@ package worker
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"encoding/hex"
-	"fmt"
 	"math/big"
 	"strings"
 	"sync"
@@ -11,10 +11,13 @@ import (
 
 	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/internal/data"
+	"github.com/carv-protocol/verifier/pkg/contract"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/pkg/errors"
@@ -25,11 +28,13 @@ const (
 )
 
 type Chain struct {
-	cf        *conf.Bootstrap
-	data      *data.Data
-	logger    *log.Helper
-	ethClient *ethclient.Client
-	cAbi      abi.ABI
+	cf           *conf.Bootstrap
+	data         *data.Data
+	logger       *log.Helper
+	verifierRepo *data.VerifierRepo
+	cAbi         abi.ABI
+	ethClient    *ethclient.Client
+	contractObj  *contract.Contract
 
 	stopChan             chan struct{}
 	blockNumberChan      chan int64
@@ -40,7 +45,7 @@ type Chain struct {
 	lock sync.RWMutex
 }
 
-func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, logger *log.Helper) (*Chain, error) {
+func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, logger *log.Helper, verifierRepo *data.VerifierRepo) (*Chain, error) {
 	cAbi, err := abi.JSON(strings.NewReader(bootstrap.Contract.Abi))
 	if err != nil {
 		return nil, errors.Wrap(err, "abi json error")
@@ -51,12 +56,20 @@ func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, l
 		return nil, errors.Wrapf(err, "new eth client error, rpc url: %s", bootstrap.Chain.RpcUrl)
 	}
 
+	contractObj, err := contract.NewContract(common.HexToAddress(bootstrap.Contract.Addr), ethClient)
+	if err != nil {
+		return nil, errors.Wrapf(err, "NewContract error")
+	}
+
 	chain := &Chain{
-		cf:              bootstrap,
-		data:            data,
-		logger:          logger,
-		ethClient:       ethClient,
-		cAbi:            cAbi,
+		cf:           bootstrap,
+		data:         data,
+		logger:       logger,
+		verifierRepo: verifierRepo,
+		cAbi:         cAbi,
+		ethClient:    ethClient,
+		contractObj:  contractObj,
+
 		stopChan:        make(chan struct{}),
 		blockNumberChan: make(chan int64, defaultBlockNumberChanLength),
 	}
@@ -242,6 +255,51 @@ func (c *Chain) getEndBlockNumber(startBlockNumber int64) int64 {
 	return endBlockNumber
 }
 
+func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte, results []bool) error {
+	privateKey, err := crypto.HexToECDSA(c.cf.Wallet.PrivateKey)
+	if err != nil {
+		return errors.Wrap(err, "pk crypto HexToECDSA error")
+	}
+	publicKey := privateKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return errors.New("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
+	}
+	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+
+	nonce, err := c.ethClient.PendingNonceAt(ctx, fromAddress)
+	if err != nil {
+		return errors.Wrap(err, "eth client get Nonce error")
+	}
+	gasPrice, err := c.ethClient.SuggestGasPrice(ctx)
+	if err != nil {
+		return errors.Wrap(err, "eth client get SuggestGasPrice error")
+	}
+
+	chainID, err := c.ethClient.ChainID(ctx)
+	if err != nil {
+		return errors.Wrap(err, "eth client get ChainID error")
+	}
+
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
+	if err != nil {
+		return errors.Wrap(err, "bind NewKeyedTransactorWithChainID error")
+	}
+	auth.Nonce = big.NewInt(int64(nonce))
+	//auth.Value = big.NewInt(0)     // in wei
+	//auth.GasLimit = uint64(300000) // in units
+	auth.GasPrice = gasPrice
+
+	tx, err := c.contractObj.VerifyAttestationBatch(auth, attestationIds, results)
+	if err != nil {
+		return errors.Wrap(err, "contract VerifyAttestationBatch error")
+	}
+
+	c.logger.WithContext(ctx).Infof("tx hash: %s", tx.Hash().Hex())
+
+	return nil
+}
+
 func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber int64) error {
 	q := ethereum.FilterQuery{
 		FromBlock: big.NewInt(startBlockNumber),
@@ -263,39 +321,28 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 
 	var logInfoList []LogInfo
 	for _, cLog := range cLogs {
-		unpackedData, err := c.cAbi.Unpack("ReportTeeAttestation", cLog.Data)
+		unpackedData, err := c.contractObj.ParseReportTeeAttestation(cLog)
 		if err != nil {
-			return errors.Wrap(err, "abi Unpack error")
-		}
-		campaignId, ok := unpackedData[1].(string)
-		if !ok {
-			return fmt.Errorf("log data parse campaignId not ok, data: %v", unpackedData)
-		}
-		attestationIdBytes, ok := unpackedData[2].([32]byte)
-		if !ok {
-			return fmt.Errorf("log data parse attestationId not ok, data: %v", unpackedData)
-
-		}
-		attestationIdStr := hex.EncodeToString(attestationIdBytes[:])
-		attestation, ok := unpackedData[3].(string)
-		if !ok {
-			return fmt.Errorf("log data parse attestation not ok, data: %v", unpackedData)
+			return errors.Wrap(err, "contract ParseReportTeeAttestation error")
 		}
 
 		logInfoList = append(logInfoList, LogInfo{
 			BlockNumber:        cLog.BlockNumber,
-			Address:            cLog.Address,
+			ContractAddress:    cLog.Address,
 			TxHash:             cLog.TxHash,
-			CampaignId:         campaignId,
-			AttestationIdBytes: attestationIdBytes,
-			AttestationIdStr:   attestationIdStr,
-			Attestation:        attestation,
+			CampaignId:         unpackedData.CampaignId,
+			AttestationIdBytes: unpackedData.AttestationId,
+			AttestationIdStr:   hex.EncodeToString(unpackedData.AttestationId[:]),
+			Attestation:        unpackedData.Attestation,
 		})
 	}
 
 	c.logger.WithContext(ctx).Infof("logInfoList: %+v", logInfoList)
 
-	// todo verify and report
+	// todo verify
+
+	// todo report
+	//c.verifyAttestation()
 
 	// todo db store
 

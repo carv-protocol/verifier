@@ -13,17 +13,19 @@ import (
 var ProviderSet = wire.NewSet(NewWorkerServer)
 
 type Server struct {
-	cf     *conf.Bootstrap
-	data   *data.Data
-	logger *log.Helper
-	chain  *Chain
+	cf           *conf.Bootstrap
+	data         *data.Data
+	logger       *log.Helper
+	verifierRepo *data.VerifierRepo
+	chain        *Chain
 }
 
-func NewWorkerServer(bootstrap *conf.Bootstrap, data *data.Data, logger *log.Helper) *Server {
+func NewWorkerServer(bootstrap *conf.Bootstrap, data *data.Data, logger *log.Helper, verifierRepo *data.VerifierRepo) *Server {
 	w := &Server{
-		cf:     bootstrap,
-		data:   data,
-		logger: logger,
+		cf:           bootstrap,
+		data:         data,
+		logger:       logger,
+		verifierRepo: verifierRepo,
 	}
 
 	return w
@@ -32,7 +34,7 @@ func NewWorkerServer(bootstrap *conf.Bootstrap, data *data.Data, logger *log.Hel
 func (s *Server) Start(ctx context.Context) error {
 	s.logger.WithContext(ctx).Info("worker server starting")
 
-	chain, err := NewChain(ctx, s.cf, s.data, s.logger)
+	chain, err := NewChain(ctx, s.cf, s.data, s.logger, s.verifierRepo)
 	if err != nil {
 		return err
 	}

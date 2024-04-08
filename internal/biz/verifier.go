@@ -4,6 +4,7 @@ import (
 	"context"
 
 	v1 "github.com/carv-protocol/verifier/api/verifier/v1"
+	"github.com/carv-protocol/verifier/internal/infra/data/model"
 
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/log"
@@ -20,7 +21,7 @@ type Verifier struct {
 }
 
 type VerifierRepo interface {
-	ListAll(context.Context) (interface{}, error)
+	ListAll(ctx context.Context) ([]*model.Verifier, error)
 }
 
 // VerifierUsecase is a Verifier usecase.
