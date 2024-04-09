@@ -320,6 +320,7 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 	}
 
 	var logInfoList []LogInfo
+	var attestationIds [][32]byte
 	for _, cLog := range cLogs {
 		unpackedData, err := c.contractObj.ParseReportTeeAttestation(cLog)
 		if err != nil {
@@ -335,15 +336,20 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 			AttestationIdStr:   hex.EncodeToString(unpackedData.AttestationId[:]),
 			Attestation:        unpackedData.Attestation,
 		})
+		attestationIds = append(attestationIds, unpackedData.AttestationId)
+
 	}
 
 	c.logger.WithContext(ctx).Infof("logInfoList: %+v", logInfoList)
 
 	// todo verify
+	var result []bool
 
 	// todo report
-	//c.verifyAttestation()
-
+	txError := c.verifyAttestation(ctx, attestationIds, result)
+	if txError != nil {
+		return txError
+	}
 	// todo db store
 
 	return nil
