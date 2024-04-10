@@ -66,4 +66,6 @@ message Contract {
 
 message Wallet {
   string private_key = 1;
+  string key = 2;
+  string private_encode = 3;
 }

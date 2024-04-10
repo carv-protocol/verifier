@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"github.com/carv-protocol/verifier/pkg/sm4"
 	"math/big"
 	"strings"
 	"sync"
@@ -21,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/pkg/errors"
+	gmsm4 "github.com/tjfoc/gmsm/sm4"
 )
 
 const (
@@ -256,9 +258,18 @@ func (c *Chain) getEndBlockNumber(startBlockNumber int64) int64 {
 }
 
 func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte, results []bool) error {
-	privateKey, err := crypto.HexToECDSA(c.cf.Wallet.PrivateKey)
+	encodeKey := c.cf.Wallet.Key
+	private_encode := c.cf.Wallet.PrivateEncode
+	iv := make([]byte, gmsm4.BlockSize)
+	cipherTextBytes, err := hex.DecodeString(private_encode)
+	privateKeyBytes, err := sm4.Sm4Decrypt([]byte(encodeKey), iv, cipherTextBytes)
+
 	if err != nil {
-		return errors.Wrap(err, "pk crypto HexToECDSA error")
+		return errors.Wrap(err, "pk decrypt error")
+	}
+	privateKey, err := crypto.HexToECDSA(string(privateKeyBytes))
+	if err != nil {
+		return errors.Wrap(err, "pk sm4 HexToECDSA error")
 	}
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
@@ -321,6 +332,8 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 
 	var logInfoList []LogInfo
 	var attestationIds [][32]byte
+	var result []bool
+
 	for _, cLog := range cLogs {
 		unpackedData, err := c.contractObj.ParseReportTeeAttestation(cLog)
 		if err != nil {
@@ -337,15 +350,17 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 			Attestation:        unpackedData.Attestation,
 		})
 		attestationIds = append(attestationIds, unpackedData.AttestationId)
+		//TODO mock result
+		result = append(result, true)
 
 	}
 
 	c.logger.WithContext(ctx).Infof("logInfoList: %+v", logInfoList)
 
 	// todo verify
-	var result []bool
 
-	// todo report
+	//TODO how to get result .
+
 	txError := c.verifyAttestation(ctx, attestationIds, result)
 	if txError != nil {
 		return txError
