@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"fmt"
 	"github.com/carv-protocol/verifier/pkg/sm4"
 	"math/big"
 	"strings"
@@ -22,7 +23,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/pkg/errors"
-	gmsm4 "github.com/tjfoc/gmsm/sm4"
 )
 
 const (
@@ -259,11 +259,13 @@ func (c *Chain) getEndBlockNumber(startBlockNumber int64) int64 {
 
 func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte, results []bool) error {
 	encodeKey := c.cf.Wallet.Key
+	iv := c.cf.Wallet.Iv
 	private_encode := c.cf.Wallet.PrivateEncode
-	iv := make([]byte, gmsm4.BlockSize)
-	cipherTextBytes, err := hex.DecodeString(private_encode)
-	privateKeyBytes, err := sm4.Sm4Decrypt([]byte(encodeKey), iv, cipherTextBytes)
+	fmt.Println(encodeKey, iv, private_encode)
 
+	cipherTextBytes, err := hex.DecodeString(private_encode)
+	privateKeyBytes, err := sm4.Sm4Decrypt([]byte(encodeKey), []byte(iv), cipherTextBytes)
+	fmt.Println(encodeKey, iv, private_encode, string(privateKeyBytes))
 	if err != nil {
 		return errors.Wrap(err, "pk decrypt error")
 	}
