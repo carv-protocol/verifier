@@ -18,7 +18,9 @@ import (
 var ProviderSet = wire.NewSet(
 	NewData,
 	NewVerifierRepo,
+	NewTransactionRepo,
 	wire.Bind(new(biz.VerifierRepo), new(*VerifierRepo)),
+	wire.Bind(new(biz.TransactionRepo), new(*TransactionRepo)),
 )
 
 type TransactionManager interface {

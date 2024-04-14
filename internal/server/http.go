@@ -13,7 +13,7 @@ import (
 )
 
 // NewHTTPServer new an HTTP server.
-func NewHTTPServer(c *conf.Bootstrap, verifier *service.VerifierService, logger log.Logger) *http.Server {
+func NewHTTPServer(c *conf.Bootstrap, verifier *service.VerifierService, transaction *service.TransactionService, logger log.Logger) *http.Server {
 	var opts = []http.ServerOption{
 		http.Middleware(
 			recovery.Recovery(),
@@ -32,5 +32,6 @@ func NewHTTPServer(c *conf.Bootstrap, verifier *service.VerifierService, logger 
 	srv.Handle("/debug/pprof/", pprof.NewHandler())
 	srv.Handle("/metrics", promhttp.Handler())
 	v1.RegisterVerifierHTTPServer(srv, verifier)
+	v1.RegisterTransactionHTTPServer(srv, transaction)
 	return srv
 }

@@ -30,13 +30,14 @@ const (
 )
 
 type Chain struct {
-	cf           *conf.Bootstrap
-	data         *data.Data
-	logger       *log.Helper
-	verifierRepo *data.VerifierRepo
-	cAbi         abi.ABI
-	ethClient    *ethclient.Client
-	contractObj  *contract.Contract
+	cf              *conf.Bootstrap
+	data            *data.Data
+	logger          *log.Helper
+	verifierRepo    *data.VerifierRepo
+	transactionRepo *data.TransactionRepo
+	cAbi            abi.ABI
+	ethClient       *ethclient.Client
+	contractObj     *contract.Contract
 
 	stopChan             chan struct{}
 	blockNumberChan      chan int64
@@ -47,7 +48,7 @@ type Chain struct {
 	lock sync.RWMutex
 }
 
-func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, logger *log.Helper, verifierRepo *data.VerifierRepo) (*Chain, error) {
+func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, logger *log.Helper, verifierRepo *data.VerifierRepo, transactionRepo *data.TransactionRepo) (*Chain, error) {
 	cAbi, err := abi.JSON(strings.NewReader(bootstrap.Contract.Abi))
 	if err != nil {
 		return nil, errors.Wrap(err, "abi json error")
@@ -64,13 +65,14 @@ func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, l
 	}
 
 	chain := &Chain{
-		cf:           bootstrap,
-		data:         data,
-		logger:       logger,
-		verifierRepo: verifierRepo,
-		cAbi:         cAbi,
-		ethClient:    ethClient,
-		contractObj:  contractObj,
+		cf:              bootstrap,
+		data:            data,
+		logger:          logger,
+		verifierRepo:    verifierRepo,
+		transactionRepo: transactionRepo,
+		cAbi:            cAbi,
+		ethClient:       ethClient,
+		contractObj:     contractObj,
 
 		stopChan:        make(chan struct{}),
 		blockNumberChan: make(chan int64, defaultBlockNumberChanLength),
@@ -257,46 +259,45 @@ func (c *Chain) getEndBlockNumber(startBlockNumber int64) int64 {
 	return endBlockNumber
 }
 
-func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte, results []bool) error {
+func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte, results []bool) (string, error) {
 	encodeKey := c.cf.Wallet.Key
 	iv := c.cf.Wallet.Iv
 	private_encode := c.cf.Wallet.PrivateEncode
-	fmt.Println(encodeKey, iv, private_encode)
 
 	cipherTextBytes, err := hex.DecodeString(private_encode)
 	privateKeyBytes, err := sm4.Sm4Decrypt([]byte(encodeKey), []byte(iv), cipherTextBytes)
-	fmt.Println(encodeKey, iv, private_encode, string(privateKeyBytes))
+	txHash := ""
 	if err != nil {
-		return errors.Wrap(err, "pk decrypt error")
+		return txHash, errors.Wrap(err, "pk decrypt error")
 	}
 	privateKey, err := crypto.HexToECDSA(string(privateKeyBytes))
 	if err != nil {
-		return errors.Wrap(err, "pk sm4 HexToECDSA error")
+		return txHash, errors.Wrap(err, "pk sm4 HexToECDSA error")
 	}
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		return errors.New("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
+		return txHash, errors.New("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
 	}
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 
 	nonce, err := c.ethClient.PendingNonceAt(ctx, fromAddress)
 	if err != nil {
-		return errors.Wrap(err, "eth client get Nonce error")
+		return txHash, errors.Wrap(err, "eth client get Nonce error")
 	}
 	gasPrice, err := c.ethClient.SuggestGasPrice(ctx)
 	if err != nil {
-		return errors.Wrap(err, "eth client get SuggestGasPrice error")
+		return txHash, errors.Wrap(err, "eth client get SuggestGasPrice error")
 	}
 
 	chainID, err := c.ethClient.ChainID(ctx)
 	if err != nil {
-		return errors.Wrap(err, "eth client get ChainID error")
+		return txHash, errors.Wrap(err, "eth client get ChainID error")
 	}
 
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
 	if err != nil {
-		return errors.Wrap(err, "bind NewKeyedTransactorWithChainID error")
+		return txHash, errors.Wrap(err, "bind NewKeyedTransactorWithChainID error")
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 	//auth.Value = big.NewInt(0)     // in wei
@@ -304,13 +305,15 @@ func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte
 	auth.GasPrice = gasPrice
 
 	tx, err := c.contractObj.VerifyAttestationBatch(auth, attestationIds, results)
+	fmt.Println("txError: ", err)
 	if err != nil {
-		return errors.Wrap(err, "contract VerifyAttestationBatch error")
+		return txHash, errors.Wrap(err, "contract VerifyAttestationBatch error")
 	}
+	txHash = tx.Hash().Hex()
 
 	c.logger.WithContext(ctx).Infof("tx hash: %s", tx.Hash().Hex())
 
-	return nil
+	return txHash, nil
 }
 
 func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber int64) error {
@@ -363,11 +366,16 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 
 	//TODO how to get result .
 
-	txError := c.verifyAttestation(ctx, attestationIds, result)
-	if txError != nil {
-		return txError
+	txHash, err := c.verifyAttestation(ctx, attestationIds, result)
+
+	if err != nil {
+		return err
 	}
-	// todo db store
+
+	_, err = c.transactionRepo.CreateTransaction(ctx, txHash, time.Now().Unix(), time.Now().Unix())
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
