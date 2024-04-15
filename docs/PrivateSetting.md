@@ -27,7 +27,7 @@ go mod tidy
 ```shell
 cd verifier/pkg/sm4
 
-# Generate private key
+# Generate Encode Private Data (Key and IV length  = 16)
 KEY=1234567890abcdef IV=123456789asdfghb PRIVATE_DATA=[Your Private Key] go test -v -run TestSm4Decrypt
 
 ```
