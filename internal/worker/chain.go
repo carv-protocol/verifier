@@ -305,8 +305,8 @@ func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte
 	auth.GasPrice = gasPrice
 
 	tx, err := c.contractObj.VerifyAttestationBatch(auth, attestationIds, results)
-	fmt.Println("txError: ", err)
 	if err != nil {
+		fmt.Println("txError: ", err)
 		return txHash, errors.Wrap(err, "contract VerifyAttestationBatch error")
 	}
 	txHash = tx.Hash().Hex()

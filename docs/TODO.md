@@ -7,11 +7,11 @@
 ```shell
 -- Table structure for v_transaction_config_int
 -- ----------------------------
-DROP TABLE IF EXISTS `t_app_config_int`;
-CREATE TABLE `t_app_config_int` (
+DROP TABLE IF EXISTS `v_transaction_config_int`;
+CREATE TABLE `v_transaction_config_int` (
   `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `k` varchar(64) NOT NULL COMMENT '配置键名',
-  `v` bigint(20) NOT NULL COMMENT '配置键值',
+  `k` varchar(64) NOT NULL COMMENT 'key name',
+  `v` bigint(20) NOT NULL COMMENT 'value',
   PRIMARY KEY (`id`),
   UNIQUE KEY `k` (`k`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4;

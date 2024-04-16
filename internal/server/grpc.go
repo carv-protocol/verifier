@@ -5,13 +5,12 @@ import (
 	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/internal/service"
 
-	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/middleware/recovery"
 	"github.com/go-kratos/kratos/v2/transport/grpc"
 )
 
 // NewGRPCServer new a gRPC server.
-func NewGRPCServer(c *conf.Bootstrap, verifier *service.VerifierService, transaction *service.TransactionService, logger log.Logger) *grpc.Server {
+func NewGRPCServer(c *conf.Bootstrap, verifier *service.VerifierService) *grpc.Server {
 	var opts = []grpc.ServerOption{
 		grpc.Middleware(
 			recovery.Recovery(),
@@ -28,6 +27,5 @@ func NewGRPCServer(c *conf.Bootstrap, verifier *service.VerifierService, transac
 	}
 	srv := grpc.NewServer(opts...)
 	v1.RegisterVerifierServer(srv, verifier)
-	v1.RegisterTransactionServer(srv, transaction)
 	return srv
 }

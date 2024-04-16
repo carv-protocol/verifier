@@ -1,23 +1,9 @@
 syntax = "proto3";
-// 先引入 google/api/annotations.proto
-import "google/api/annotations.proto";
 package api.transaction.v1;
 
 option go_package = "github.com/carv-protocol/verifier/api/transaction/v1;v1";
 option java_multiple_files = true;
 option java_package = "api.transaction.v1";
-
-service Transaction {
-	rpc CreateTransaction (CreateTransactionRequest) returns (CreateTransactionReply) {
-		option (google.api.http) = {
-			get: "/v1/transaction/{hash}",
-		};
-	};
-	rpc UpdateTransaction (UpdateTransactionRequest) returns (UpdateTransactionReply);
-	rpc DeleteTransaction (DeleteTransactionRequest) returns (DeleteTransactionReply);
-	rpc GetTransaction (GetTransactionRequest) returns (GetTransactionReply);
-	rpc ListTransaction (ListTransactionRequest) returns (ListTransactionReply);
-}
 
 message CreateTransactionRequest {
 	string hash = 1;
