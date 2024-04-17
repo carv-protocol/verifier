@@ -2,8 +2,10 @@ package data
 
 import (
 	"context"
-	"github.com/carv-protocol/verifier/internal/biz"
+
 	"github.com/go-kratos/kratos/v2/log"
+
+	"github.com/carv-protocol/verifier/internal/biz"
 )
 
 type TransactionRepo struct {

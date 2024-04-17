@@ -2,9 +2,11 @@ package data
 
 import (
 	"context"
-	"github.com/carv-protocol/verifier/internal/biz"
+
 	"github.com/go-kratos/kratos/v2/log"
 	"gorm.io/gorm"
+
+	"github.com/carv-protocol/verifier/internal/biz"
 )
 
 type ReportTeeAttestationEventRepo struct {

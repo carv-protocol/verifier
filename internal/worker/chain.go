@@ -5,16 +5,10 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
-	"github.com/carv-protocol/verifier/internal/biz"
-	"github.com/carv-protocol/verifier/pkg/sm4"
 	"math/big"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/carv-protocol/verifier/internal/conf"
-	"github.com/carv-protocol/verifier/internal/data"
-	"github.com/carv-protocol/verifier/pkg/contract"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -24,6 +18,12 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/pkg/errors"
+
+	"github.com/carv-protocol/verifier/internal/biz"
+	"github.com/carv-protocol/verifier/internal/conf"
+	"github.com/carv-protocol/verifier/internal/data"
+	"github.com/carv-protocol/verifier/pkg/contract"
+	"github.com/carv-protocol/verifier/pkg/sm4"
 )
 
 const (
