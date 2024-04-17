@@ -1,0 +1,37 @@
+syntax = "proto3";
+package api.transaction.v1;
+
+option go_package = "github.com/carv-protocol/verifier/api/reportTeeAttestationEvent/v1;v1";
+option java_multiple_files = true;
+option java_package = "api.reportTeeAttestationEvent.v1";
+
+message CreateReportTeeAttestationEventRequest {
+	uint64 blockNumber = 1;
+	string contractAddress = 2;
+	string teeAddress = 3;
+	string campaignId = 4;
+	bytes  attestationId = 5;
+	string attestation = 6;
+	string txHash = 7;
+	int32 createdAt = 8;
+	int32 updatedAt = 9;
+}
+message CreateReportTeeAttestationEventReply {
+	bool success = 1;
+}
+
+message GetReportTeeAttestationEventRequest {
+	string txHash = 1;
+}
+message GetReportTeeAttestationEventReply {
+	uint64 blockNumber = 1;
+	string contractAddress = 2;
+	string teeAddress = 3;
+	string campaignId = 4;
+	bytes  attestationId = 5;
+	string attestation = 6;
+	string txHash = 7;
+	int32 createdAt = 8;
+	int32 updatedAt = 9;
+}
+

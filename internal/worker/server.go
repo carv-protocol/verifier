@@ -13,21 +13,23 @@ import (
 var ProviderSet = wire.NewSet(NewWorkerServer)
 
 type Server struct {
-	cf              *conf.Bootstrap
-	data            *data.Data
-	logger          *log.Helper
-	verifierRepo    *data.VerifierRepo
-	transactionRepo *data.TransactionRepo
-	chain           *Chain
+	cf                       *conf.Bootstrap
+	data                     *data.Data
+	logger                   *log.Helper
+	verifierRepo             *data.VerifierRepo
+	transactionRepo          *data.TransactionRepo
+	reportTeeAttestationRepo *data.ReportTeeAttestationEventRepo
+	chain                    *Chain
 }
 
-func NewWorkerServer(bootstrap *conf.Bootstrap, data *data.Data, logger *log.Helper, verifierRepo *data.VerifierRepo, transactionRepo *data.TransactionRepo) *Server {
+func NewWorkerServer(bootstrap *conf.Bootstrap, data *data.Data, logger *log.Helper, verifierRepo *data.VerifierRepo, transactionRepo *data.TransactionRepo, reportTeeAttestationRepo *data.ReportTeeAttestationEventRepo) *Server {
 	w := &Server{
-		cf:              bootstrap,
-		data:            data,
-		logger:          logger,
-		verifierRepo:    verifierRepo,
-		transactionRepo: transactionRepo,
+		cf:                       bootstrap,
+		data:                     data,
+		logger:                   logger,
+		verifierRepo:             verifierRepo,
+		transactionRepo:          transactionRepo,
+		reportTeeAttestationRepo: reportTeeAttestationRepo,
 	}
 
 	return w
@@ -36,7 +38,7 @@ func NewWorkerServer(bootstrap *conf.Bootstrap, data *data.Data, logger *log.Hel
 func (s *Server) Start(ctx context.Context) error {
 	s.logger.WithContext(ctx).Info("worker server starting")
 
-	chain, err := NewChain(ctx, s.cf, s.data, s.logger, s.verifierRepo, s.transactionRepo)
+	chain, err := NewChain(ctx, s.cf, s.data, s.logger, s.verifierRepo, s.transactionRepo, s.reportTeeAttestationRepo)
 	if err != nil {
 		return err
 	}

@@ -18,12 +18,8 @@ func NewTransactionRepo(data *Data, logger log.Logger) *TransactionRepo {
 	}
 }
 
-func (t *TransactionRepo) CreateTransaction(ctx context.Context, hash string, createdTime int64, updatedTime int64) (*biz.Transaction, error) {
-	var stu biz.Transaction
-	stu.Hash = hash
-	stu.CreatedAt = createdTime
-	stu.UpdatedAt = updatedTime
-	t.data.db.Create(&stu)
-	t.log.WithContext(ctx).Info("gormDB: CreateTransaction, trx:", hash)
-	return &stu, nil
+func (t *TransactionRepo) CreateTransaction(ctx context.Context, transaction *biz.Transaction) (*biz.Transaction, error) {
+	t.data.db.Create(&transaction)
+	t.log.WithContext(ctx).Info("gormDB: CreateTransaction, trx:", transaction.TxHash)
+	return transaction, nil
 }

@@ -7,11 +7,15 @@ import (
 )
 
 type Transaction struct {
-	ID        int32
-	Hash      string
-	Status    int32
-	CreatedAt int64
-	UpdatedAt int64
+	ID           int32
+	FromAddress  string
+	ToAddress    string
+	TxHash       string
+	Gas          int64
+	GasPrice     int64
+	HandleStatus int32
+	CreatedAt    int64
+	HandleAt     int64
 }
 
 type TransactionRepo interface {

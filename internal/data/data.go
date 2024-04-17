@@ -19,8 +19,10 @@ var ProviderSet = wire.NewSet(
 	NewData,
 	NewVerifierRepo,
 	NewTransactionRepo,
+	NewReportTeeAttestationEventRepo,
 	wire.Bind(new(biz.VerifierRepo), new(*VerifierRepo)),
 	wire.Bind(new(biz.TransactionRepo), new(*TransactionRepo)),
+	wire.Bind(new(biz.ReportTeeAttestationEventRepo), new(*ReportTeeAttestationEventRepo)),
 )
 
 type TransactionManager interface {
@@ -69,6 +71,16 @@ func NewData(bootstrap *conf.Bootstrap, logger *log.Helper) (*Data, func()) {
 			_ = sqlDB.Close()
 			log.Info("db closed")
 		})
+
+		// Auto migrate tables
+		err = d.db.AutoMigrate(
+			&biz.Transaction{},
+			&biz.ReportTeeAttestationEvent{},
+		)
+		if err != nil {
+			log.Info("auto migrate tables failed")
+			return nil, nil
+		}
 	}
 
 	return d, func() {

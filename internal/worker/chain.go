@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
+	"github.com/carv-protocol/verifier/internal/biz"
 	"github.com/carv-protocol/verifier/pkg/sm4"
 	"math/big"
 	"strings"
@@ -30,14 +31,15 @@ const (
 )
 
 type Chain struct {
-	cf              *conf.Bootstrap
-	data            *data.Data
-	logger          *log.Helper
-	verifierRepo    *data.VerifierRepo
-	transactionRepo *data.TransactionRepo
-	cAbi            abi.ABI
-	ethClient       *ethclient.Client
-	contractObj     *contract.Contract
+	cf                            *conf.Bootstrap
+	data                          *data.Data
+	logger                        *log.Helper
+	verifierRepo                  *data.VerifierRepo
+	transactionRepo               *data.TransactionRepo
+	reportTeeAttestationEventRepo *data.ReportTeeAttestationEventRepo
+	cAbi                          abi.ABI
+	ethClient                     *ethclient.Client
+	contractObj                   *contract.Contract
 
 	stopChan             chan struct{}
 	blockNumberChan      chan int64
@@ -48,7 +50,7 @@ type Chain struct {
 	lock sync.RWMutex
 }
 
-func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, logger *log.Helper, verifierRepo *data.VerifierRepo, transactionRepo *data.TransactionRepo) (*Chain, error) {
+func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, logger *log.Helper, verifierRepo *data.VerifierRepo, transactionRepo *data.TransactionRepo, reportTeeAttestationRepo *data.ReportTeeAttestationEventRepo) (*Chain, error) {
 	cAbi, err := abi.JSON(strings.NewReader(bootstrap.Contract.Abi))
 	if err != nil {
 		return nil, errors.Wrap(err, "abi json error")
@@ -65,14 +67,15 @@ func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, l
 	}
 
 	chain := &Chain{
-		cf:              bootstrap,
-		data:            data,
-		logger:          logger,
-		verifierRepo:    verifierRepo,
-		transactionRepo: transactionRepo,
-		cAbi:            cAbi,
-		ethClient:       ethClient,
-		contractObj:     contractObj,
+		cf:                            bootstrap,
+		data:                          data,
+		logger:                        logger,
+		verifierRepo:                  verifierRepo,
+		transactionRepo:               transactionRepo,
+		reportTeeAttestationEventRepo: reportTeeAttestationRepo,
+		cAbi:                          cAbi,
+		ethClient:                     ethClient,
+		contractObj:                   contractObj,
 
 		stopChan:        make(chan struct{}),
 		blockNumberChan: make(chan int64, defaultBlockNumberChanLength),
@@ -83,10 +86,16 @@ func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, l
 
 func (c *Chain) Start(ctx context.Context) error {
 	startBlockNumber := c.cf.Chain.StartBlock
-	// todo read from db
-	//if record != nil && record.BlockNumber > startBlockNumber {
-	//	startBlockNumber = record.BlockNumber + 1
-	//}
+
+	var reportTeeAttestationEvent biz.ReportTeeAttestationEvent
+
+	event, err := c.reportTeeAttestationEventRepo.LastReportTeeAttestationEvent(&reportTeeAttestationEvent)
+	if err != nil {
+		c.logger.WithContext(ctx).Errorf("get last reportTeeAttestationEvent error: %s", err)
+		return nil
+	}
+	// start block from db
+	startBlockNumber = int64(event.BlockNumber + 1)
 	if startBlockNumber == 0 {
 		blockNumber, err := c.ethClient.BlockNumber(ctx)
 		if err != nil {
@@ -312,6 +321,21 @@ func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte
 	txHash = tx.Hash().Hex()
 
 	c.logger.WithContext(ctx).Infof("tx hash: %s", tx.Hash().Hex())
+	// transaction inf insert db
+	trx := biz.Transaction{
+		TxHash:       tx.Hash().String(),
+		FromAddress:  fromAddress.String(),
+		ToAddress:    c.cf.Contract.Addr,
+		Gas:          int64(tx.Gas()),
+		GasPrice:     int64(tx.GasPrice().Uint64()),
+		HandleStatus: 0,
+		CreatedAt:    tx.Time().Unix(),
+		HandleAt:     tx.Time().Unix(),
+	}
+	_, err = c.transactionRepo.CreateTransaction(ctx, &trx)
+	if err != nil {
+		return txHash, err
+	}
 
 	return txHash, nil
 }
@@ -344,16 +368,44 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 		if err != nil {
 			return errors.Wrap(err, "contract ParseReportTeeAttestation error")
 		}
+		// query hash is/not exist
+		_, findResult := c.reportTeeAttestationEventRepo.FindReportTeeAttestationEvent(ctx, strings.ToLower(cLog.TxHash.String()), int(unpackedData.Raw.TxIndex))
+		if findResult.RowsAffected != 0 {
+			continue
+		}
 
 		logInfoList = append(logInfoList, LogInfo{
 			BlockNumber:        cLog.BlockNumber,
 			ContractAddress:    cLog.Address,
 			TxHash:             cLog.TxHash,
+			TxIndex:            unpackedData.Raw.TxIndex,
+			TeeAddress:         unpackedData.TeeAddress,
 			CampaignId:         unpackedData.CampaignId,
 			AttestationIdBytes: unpackedData.AttestationId,
 			AttestationIdStr:   hex.EncodeToString(unpackedData.AttestationId[:]),
 			Attestation:        unpackedData.Attestation,
 		})
+
+		// save attestation event into db
+		reportTeeAttestationEvent := biz.ReportTeeAttestationEvent{
+			BlockNumber:     cLog.BlockNumber,
+			ContractAddress: strings.ToLower(cLog.Address.String()),
+			TxHash:          strings.ToLower(cLog.TxHash.String()),
+			TxIndex:         int(unpackedData.Raw.TxIndex),
+			TeeAddress:      strings.ToLower(unpackedData.TeeAddress.String()),
+			CampaignId:      unpackedData.CampaignId,
+			AttestationId:   unpackedData.AttestationId[:],
+			Attestation:     unpackedData.Attestation,
+			CreatedAt:       int32(time.Now().Unix()),
+			HandleAt:        int32(time.Now().Unix()),
+		}
+
+		event, err := c.reportTeeAttestationEventRepo.CreateReportTeeAttestationEvent(ctx, reportTeeAttestationEvent)
+
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("reportTeeAttestationEvent %+v , %s", event, err)
+			return err
+		}
 		attestationIds = append(attestationIds, unpackedData.AttestationId)
 		//TODO mock result
 		result = append(result, true)
@@ -365,14 +417,11 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 	// todo verify
 
 	//TODO how to get result .
-
-	txHash, err := c.verifyAttestation(ctx, attestationIds, result)
-
-	if err != nil {
-		return err
+	if len(attestationIds) == 0 {
+		return nil
 	}
+	_, err = c.verifyAttestation(ctx, attestationIds, result)
 
-	_, err = c.transactionRepo.CreateTransaction(ctx, txHash, time.Now().Unix(), time.Now().Unix())
 	if err != nil {
 		return err
 	}
