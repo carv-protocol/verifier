@@ -19,7 +19,6 @@ import (
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/pkg/errors"
 
-	"github.com/carv-protocol/verifier/internal/biz"
 	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/internal/data"
 	"github.com/carv-protocol/verifier/pkg/attestion"
@@ -310,21 +309,6 @@ func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte
 	txHash = tx.Hash().Hex()
 
 	c.logger.WithContext(ctx).Infof("tx hash: %s", tx.Hash().Hex())
-	// transaction inf insert db
-	trx := biz.Transaction{
-		TxHash:       tx.Hash().String(),
-		FromAddress:  fromAddress.String(),
-		ToAddress:    c.cf.Contract.Addr,
-		Gas:          int64(tx.Gas()),
-		GasPrice:     int64(tx.GasPrice().Uint64()),
-		HandleStatus: 0,
-		CreatedAt:    tx.Time().Unix(),
-		HandleAt:     tx.Time().Unix(),
-	}
-	_, err = c.transactionRepo.CreateTransaction(ctx, &trx)
-	if err != nil {
-		return txHash, err
-	}
 
 	return txHash, nil
 }
