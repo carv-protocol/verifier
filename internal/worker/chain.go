@@ -375,7 +375,7 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 		attestationIds = append(attestationIds, unpackedData.AttestationId)
 		// attestation mrenclave
 
-		_, mrEnclave, err := c.contractObj.GetTeeInfo(&bind.CallOpts{}, common.HexToAddress("0x19baa72643aa11b28cb6251fd7596201778ead9a"))
+		_, mrEnclaveFronContract, err := c.contractObj.GetTeeInfo(&bind.CallOpts{}, common.HexToAddress("0x19baa72643aa11b28cb6251fd7596201778ead9a"))
 		if err != nil {
 			return errors.Wrap(err, "contract GetTeeInfo error")
 		}
@@ -383,7 +383,8 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 		if err != nil {
 			return err
 		}
-		if hex.EncodeToString(attestationDecodeOb.QEReport.MREnclave[:]) != mrEnclave {
+		mrEnclave := hex.EncodeToString(attestationDecodeOb.QEReport.MREnclave[:])
+		if mrEnclave != mrEnclaveFronContract {
 			result = append(result, false)
 			continue
 		}
@@ -393,9 +394,6 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 
 	c.logger.WithContext(ctx).Infof("logInfoList: %+v", logInfoList)
 
-	// todo verify
-
-	//TODO how to get result .
 	if len(attestationIds) == 0 {
 		return nil
 	}

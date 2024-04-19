@@ -18,7 +18,7 @@ chain:
   chain_id: 5611
   chain_name: "opBNB"
   rpc_url: "https://opbnb-testnet.nodereal.io/v1/9e210feafbec4ed9bd48f855c2bd979a"
-  start_block: 26398057
+  start_block: 26623154
   offset_block: 1
 contract:
   addr: "0x39afd848cd4a83cddd06f340ae584c547e53873d"
