@@ -25,13 +25,13 @@ type QECert struct {
 type QEReport struct {
 	CPUSVN     [16]byte `json:"cpusvn"`
 	MiscSelect uint32   `json:"miscSelect"`
-	Reserved1  [28]byte `json:"reserved1"`
+	Reserved1  uint8    `json:"reserved1"`
+	ISVProdID  uint16   `json:"isvProdID"`
 	Attributes [16]byte `json:"attributes"`
 	MREnclave  [32]byte `json:"mrEnclave"`
 	Reserved2  [32]byte `json:"reserved2"`
 	MRSigner   [32]byte `json:"mrSigner"`
 	Reserved3  [96]byte `json:"reserved3"`
-	ISVProdID  uint16   `json:"isvProdID"`
 	ISVSVN     uint16   `json:"isvSVN"`
 	Reserved4  [60]byte `json:"reserved4"`
 	ReportData [64]byte `json:"reportData"`
@@ -49,8 +49,18 @@ func DecodeFromBytes(bytesStr string) (ECDSAQuoteV3AuthData, error) {
 	}
 
 	var ecdsaQuote ECDSAQuoteV3AuthData
-
+	//ecdsaQuote.QEReport.CPUSVN = *(*[16]byte)(bytes[12:28])
+	//ecdsaQuote.QEReport.MiscSelect = binary.LittleEndian.Uint32(bytes[28:32])
+	//ecdsaQuote.QEReport.Reserved1 = bytes[32]
+	//ecdsaQuote.QEReport.ISVProdID = binary.LittleEndian.Uint16(bytes[32:34])
+	//ecdsaQuote.QEReport.Attributes = *(*[16]byte)(bytes[96:112])
 	ecdsaQuote.QEReport.MREnclave = *(*[32]byte)(bytes[112:144])
+	//ecdsaQuote.QEReport.Reserved2 = *(*[32]byte)(bytes[144:176])
+	//ecdsaQuote.QEReport.MRSigner = *(*[32]byte)(bytes[176:208])
+	//ecdsaQuote.QEReport.Reserved3 = *(*[96]byte)(bytes[208:304])
+	//ecdsaQuote.QEReport.ISVSVN = binary.LittleEndian.Uint16(bytes[304:306])
+	//ecdsaQuote.QEReport.Reserved4 = *(*[60]byte)(bytes[306:366])
+	//ecdsaQuote.QEReport.ReportData = *(*[64]byte)(bytes[366:430])
 
 	bytes = bytes[576:]
 	quAuthDataSize := binary.LittleEndian.Uint16(bytes[0:2])

@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+
 	"github.com/go-kratos/kratos/v2/log"
 )
 
@@ -34,7 +35,5 @@ func NewReportTeeAttestationEventUsecase(repo ReportTeeAttestationEventRepo, log
 
 func (rtaeUsecase *ReportTeeAttestationEventUsecase) CreateReportTeeAttestationEvent(ctx context.Context, event ReportTeeAttestationEvent) (*ReportTeeAttestationEvent, error) {
 	rtaeUsecase.log.WithContext(ctx).Infof("CreateTransaction: %v", event)
-
 	return rtaeUsecase.repo.CreateReportTeeAttestationEvent(ctx, event)
-
 }

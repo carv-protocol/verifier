@@ -4,8 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
-	"fmt"
-	"github.com/carv-protocol/verifier/pkg/attestion"
 	"math/big"
 	"os"
 	"strings"
@@ -21,9 +19,9 @@ import (
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/pkg/errors"
 
-	"github.com/carv-protocol/verifier/internal/biz"
 	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/internal/data"
+	"github.com/carv-protocol/verifier/pkg/attestion"
 	"github.com/carv-protocol/verifier/pkg/contract"
 )
 
@@ -306,27 +304,11 @@ func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte
 
 	tx, err := c.contractObj.VerifyAttestationBatch(auth, attestationIds, results)
 	if err != nil {
-		fmt.Println("txError: ", err)
 		return txHash, errors.Wrap(err, "contract VerifyAttestationBatch error")
 	}
 	txHash = tx.Hash().Hex()
 
 	c.logger.WithContext(ctx).Infof("tx hash: %s", tx.Hash().Hex())
-	// transaction inf insert db
-	trx := biz.Transaction{
-		TxHash:       tx.Hash().String(),
-		FromAddress:  fromAddress.String(),
-		ToAddress:    c.cf.Contract.Addr,
-		Gas:          int64(tx.Gas()),
-		GasPrice:     int64(tx.GasPrice().Uint64()),
-		HandleStatus: 0,
-		CreatedAt:    tx.Time().Unix(),
-		HandleAt:     tx.Time().Unix(),
-	}
-	_, err = c.transactionRepo.CreateTransaction(ctx, &trx)
-	if err != nil {
-		return txHash, err
-	}
 
 	return txHash, nil
 }
@@ -375,7 +357,7 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 		attestationIds = append(attestationIds, unpackedData.AttestationId)
 		// attestation mrenclave
 
-		_, mrEnclaveFronContract, err := c.contractObj.GetTeeInfo(&bind.CallOpts{}, common.HexToAddress("0x19baa72643aa11b28cb6251fd7596201778ead9a"))
+		_, mrEnclaveFronContract, err := c.contractObj.GetTeeInfo(&bind.CallOpts{}, common.HexToAddress(c.cf.Contract.TeeAddr))
 		if err != nil {
 			return errors.Wrap(err, "contract GetTeeInfo error")
 		}
