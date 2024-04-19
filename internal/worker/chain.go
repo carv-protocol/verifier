@@ -21,7 +21,6 @@ import (
 
 	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/internal/data"
-	"github.com/carv-protocol/verifier/pkg/attestion"
 	"github.com/carv-protocol/verifier/pkg/contract"
 )
 
@@ -261,7 +260,7 @@ func (c *Chain) getEndBlockNumber(startBlockNumber int64) int64 {
 	return endBlockNumber
 }
 
-func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte, results []bool) (string, error) {
+func (c *Chain) SendAttestationTrx(ctx context.Context, attestationIds [][32]byte, results []bool) (string, error) {
 
 	privateKeyBytes, err := Sm4Decrypt(c)
 	txHash := ""
@@ -355,18 +354,9 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 		})
 
 		attestationIds = append(attestationIds, unpackedData.AttestationId)
-		// attestation mrenclave
-
-		_, mrEnclaveFronContract, err := c.contractObj.GetTeeInfo(&bind.CallOpts{}, common.HexToAddress(c.cf.Contract.TeeAddr))
-		if err != nil {
-			return errors.Wrap(err, "contract GetTeeInfo error")
-		}
-		attestationDecodeOb, err := attestion.DecodeFromBytes(unpackedData.Attestation)
-		if err != nil {
-			return err
-		}
-		mrEnclave := hex.EncodeToString(attestationDecodeOb.QEReport.MREnclave[:])
-		if mrEnclave != mrEnclaveFronContract {
+		// Verify attestation
+		isTrue, err := verifyAttestation(c, unpackedData.Attestation)
+		if !isTrue {
 			result = append(result, false)
 			continue
 		}
@@ -376,10 +366,11 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 
 	c.logger.WithContext(ctx).Infof("logInfoList: %+v", logInfoList)
 
+	// send transaction to chain
 	if len(attestationIds) == 0 {
 		return nil
 	}
-	_, err = c.verifyAttestation(ctx, attestationIds, result)
+	_, err = c.SendAttestationTrx(ctx, attestationIds, result)
 
 	if err != nil {
 		return err

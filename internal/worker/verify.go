@@ -1,10 +1,12 @@
-package attestion
+package worker
 
 import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
-	"fmt"
+
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 )
 
@@ -37,15 +39,14 @@ type QEReport struct {
 	ReportData [64]byte `json:"reportData"`
 }
 
-func DecodeFromBytes(bytesStr string) (ECDSAQuoteV3AuthData, error) {
+func verifyAttestation(c *Chain, bytesStr string) (bool, error) {
 	// base64 decode
 	bytes, err := base64.StdEncoding.DecodeString(bytesStr)
-	fmt.Println(hex.EncodeToString(bytes))
 	if err != nil {
-		return ECDSAQuoteV3AuthData{}, err
+		return false, errors.Wrapf(err, "Failed to decode base64 string")
 	}
 	if len(bytes) < 576 {
-		return ECDSAQuoteV3AuthData{}, errors.New("Invalid length for ECDSA Quote V3 Auth Data")
+		return false, errors.New("Invalid length for ECDSA Quote V3 Auth Data")
 	}
 
 	var ecdsaQuote ECDSAQuoteV3AuthData
@@ -67,9 +68,20 @@ func DecodeFromBytes(bytesStr string) (ECDSAQuoteV3AuthData, error) {
 
 	bytes = bytes[2:]
 	if len(bytes) < int(quAuthDataSize) {
-		return ECDSAQuoteV3AuthData{}, errors.New("Invalid QE auth data size")
+		return false, errors.New("Invalid QE auth data size")
 	}
 	ecdsaQuote.QEAuthData = bytes[:quAuthDataSize]
 
-	return ecdsaQuote, nil
+	// mrenclave
+	_, mrEnclaveFromContract, err := c.contractObj.GetTeeInfo(&bind.CallOpts{}, common.HexToAddress(c.cf.Contract.TeeAddr))
+	if err != nil {
+		return false, errors.Wrap(err, "contract GetTeeInfo error")
+	}
+	mrEnclave := hex.EncodeToString(ecdsaQuote.QEReport.MREnclave[:])
+	if mrEnclave != mrEnclaveFromContract {
+		return false, errors.New("mrenclave not match")
+	}
+
+	return true, nil
+
 }
