@@ -3,22 +3,26 @@ package data
 import (
 	"context"
 
-	"github.com/carv-protocol/verifier/internal/biz"
-	"github.com/carv-protocol/verifier/internal/conf"
-	"github.com/carv-protocol/verifier/pkg/dblogger"
-
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/google/wire"
 	"github.com/gozelus/gormotel"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+
+	"github.com/carv-protocol/verifier/internal/biz"
+	"github.com/carv-protocol/verifier/internal/conf"
+	"github.com/carv-protocol/verifier/pkg/dblogger"
 )
 
 // ProviderSet is data providers.
 var ProviderSet = wire.NewSet(
 	NewData,
 	NewVerifierRepo,
+	NewTransactionRepo,
+	NewReportTeeAttestationEventRepo,
 	wire.Bind(new(biz.VerifierRepo), new(*VerifierRepo)),
+	wire.Bind(new(biz.TransactionRepo), new(*TransactionRepo)),
+	wire.Bind(new(biz.ReportTeeAttestationEventRepo), new(*ReportTeeAttestationEventRepo)),
 )
 
 type TransactionManager interface {
@@ -67,6 +71,16 @@ func NewData(bootstrap *conf.Bootstrap, logger *log.Helper) (*Data, func()) {
 			_ = sqlDB.Close()
 			log.Info("db closed")
 		})
+
+		// Auto migrate tables
+		err = d.db.AutoMigrate(
+			&biz.Transaction{},
+			&biz.ReportTeeAttestationEvent{},
+		)
+		if err != nil {
+			log.Info("auto migrate tables failed")
+			return nil, nil
+		}
 	}
 
 	return d, func() {
