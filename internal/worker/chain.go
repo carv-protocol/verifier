@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"github.com/carv-protocol/verifier/internal/key_manager"
 	"math/big"
 	"os"
 	"strings"
@@ -261,16 +262,8 @@ func (c *Chain) getEndBlockNumber(startBlockNumber int64) int64 {
 }
 
 func (c *Chain) SendAttestationTrx(ctx context.Context, attestationIds [][32]byte, results []bool) (string, error) {
-
-	privateKeyBytes, err := Sm4Decrypt(c)
 	txHash := ""
-	if err != nil {
-		return txHash, errors.Wrap(err, "pk decrypt error")
-	}
-	privateKey, err := crypto.HexToECDSA(string(privateKeyBytes))
-	if err != nil {
-		return txHash, errors.Wrap(err, "pk sm4 HexToECDSA error")
-	}
+	privateKey := key_manager.Inst().PrivateKey()
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {

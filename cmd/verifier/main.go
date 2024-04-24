@@ -2,11 +2,11 @@ package main
 
 import (
 	"flag"
-	"os"
-
 	"github.com/carv-protocol/verifier/internal/conf"
+	"github.com/carv-protocol/verifier/internal/key_manager"
 	"github.com/carv-protocol/verifier/internal/worker"
 	"github.com/carv-protocol/verifier/pkg/stdlogger"
+	"os"
 
 	"github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/config"
@@ -24,14 +24,26 @@ var (
 	Name string
 	// Version is the version of the compiled software.
 	Version string
-	// flagconf is the config flag.
-	flagconf string
+	// flagVar
+	flagVar FlagVar
 
 	id, _ = os.Hostname()
 )
 
+type FlagVar struct {
+	Conf             string
+	PrivateKey       string
+	KeystorePath     string
+	KeystorePassword string
+	GenerateKeystore bool
+}
+
 func init() {
-	flag.StringVar(&flagconf, "conf", "../../configs", "config path, eg: -conf config.yaml")
+	flag.StringVar(&flagVar.Conf, "conf", "../../configs", "config path, eg: -conf config.yaml")
+	flag.StringVar(&flagVar.PrivateKey, "private-key", "", "private key, eg: -private-key 9a8bd8c....21dec")
+	flag.StringVar(&flagVar.KeystorePath, "keystore-path", "", "keystore path, eg: -keystore-path .")
+	flag.StringVar(&flagVar.KeystorePassword, "keystore-password", "", "keystore password, eg: -keystore-password 123456")
+	flag.BoolVar(&flagVar.GenerateKeystore, "generate-keystore", false, "generate keystore, eg: -generate-keystore")
 }
 
 func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server, workerServer *worker.Server) *kratos.App {
@@ -52,9 +64,14 @@ func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server, workerServer *w
 func main() {
 	flag.Parse()
 
+	if flagVar.GenerateKeystore {
+		key_manager.GenerateKeystore(flagVar.KeystorePath)
+		return
+	}
+
 	c := config.New(
 		config.WithSource(
-			file.NewSource(flagconf),
+			file.NewSource(flagVar.Conf),
 		),
 	)
 	defer c.Close()
@@ -88,6 +105,10 @@ func main() {
 		"span.id", tracing.SpanID(),
 	)
 	logger := log.NewHelper(logFormat)
+
+	if err := key_manager.NewKeyManager(bc.Wallet, flagVar.PrivateKey, flagVar.KeystorePath, flagVar.KeystorePassword); err != nil {
+		panic(err)
+	}
 
 	app, cleanup, err := wireApp(&bc, logFormat, logger)
 	if err != nil {

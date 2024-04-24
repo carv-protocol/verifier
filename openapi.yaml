@@ -3,8 +3,33 @@
 
 openapi: 3.0.3
 info:
-    title: ""
+    title: Verifier API
     version: 0.0.1
-paths: {}
+paths:
+    /verifier/{name}:
+        get:
+            tags:
+                - Verifier
+            operationId: Verifier_SayHello
+            parameters:
+                - name: name
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/verifier.v1.HelloReply'
 components:
-    schemas: {}
+    schemas:
+        verifier.v1.HelloReply:
+            type: object
+            properties:
+                message:
+                    type: string
+tags:
+    - name: Verifier
