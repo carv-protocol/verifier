@@ -2,7 +2,6 @@ package biz
 
 import (
 	"context"
-	"time"
 
 	"github.com/go-kratos/kratos/v2/log"
 )
@@ -20,7 +19,7 @@ type Transaction struct {
 }
 
 type TransactionRepo interface {
-	CreateTransaction(context.Context, string, int64, int64) (*Transaction, error)
+	CreateTransaction(context.Context, *Transaction) (*Transaction, error)
 }
 
 type TransactionUsecase struct {
@@ -32,7 +31,7 @@ func NewTransactionUsecase(repo TransactionRepo, logger *log.Helper) *Transactio
 	return &TransactionUsecase{repo: repo, log: logger}
 }
 
-func (trx *TransactionUsecase) CreateTransaction(ctx context.Context, hash string) (*Transaction, error) {
-	trx.log.WithContext(ctx).Infof("CreateTransaction: %v", hash)
-	return trx.repo.CreateTransaction(ctx, hash, time.Now().Unix(), time.Now().Unix())
+func (trx *TransactionUsecase) CreateTransaction(ctx context.Context, transaction *Transaction) (*Transaction, error) {
+	trx.log.WithContext(ctx).Infof("CreateTransaction: %v", transaction.TxHash)
+	return trx.repo.CreateTransaction(ctx, transaction)
 }
