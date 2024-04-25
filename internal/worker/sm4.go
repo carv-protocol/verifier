@@ -25,10 +25,10 @@ func Sm4Encrypt(key, iv, plainText []byte) ([]byte, error) {
 	return cryted, nil
 }
 
-func Sm4Decrypt(cf *conf.Bootstrap) ([]byte, error) {
-	key := []byte(cf.Wallet.Key)
-	iv := []byte(cf.Wallet.Iv)
-	private_encode := cf.Wallet.PrivateEncode
+func Sm4Decrypt(cf *conf.Bootstrap, chainId int) ([]byte, error) {
+	key := []byte(cf.Wallets[chainId].Key)
+	iv := []byte(cf.Wallets[chainId].Iv)
+	private_encode := cf.Wallets[chainId].PrivateEncode
 
 	cipherText, err := hex.DecodeString(private_encode)
 	if err != nil {
