@@ -39,7 +39,7 @@ type QEReport struct {
 	ReportData [64]byte `json:"reportData"`
 }
 
-func verifyAttestation(c *Chain, bytesStr string) (bool, error) {
+func verifyAttestation(c *Chain, bytesStr string, chainId int) (bool, error) {
 	// base64 decode
 	bytes, err := base64.StdEncoding.DecodeString(bytesStr)
 	if err != nil {
@@ -73,7 +73,7 @@ func verifyAttestation(c *Chain, bytesStr string) (bool, error) {
 	ecdsaQuote.QEAuthData = bytes[:quAuthDataSize]
 
 	// mrenclave
-	_, mrEnclaveFromContract, err := c.contractObj.GetTeeInfo(&bind.CallOpts{}, common.HexToAddress(c.cf.Contract.TeeAddr))
+	_, mrEnclaveFromContract, err := c.contractObjs[chainId].GetTeeInfo(&bind.CallOpts{}, common.HexToAddress(c.cf.Contracts[chainId].TeeAddr))
 	if err != nil {
 		return false, errors.Wrap(err, "contract GetTeeInfo error")
 	}

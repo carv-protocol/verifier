@@ -14,19 +14,32 @@ data:
     max_idle_connections: 10
     conn_max_lifetime: 360s
     conn_max_idle_time: 180s
-chain:
-  chain_id: 5611
-  chain_name: "opBNB"
-  rpc_url: "https://opbnb-testnet.nodereal.io/v1/9e210feafbec4ed9bd48f855c2bd979a"
-  start_block: 26623154
-  offset_block: 1
-contract:
-  addr: "0x39afd848cd4a83cddd06f340ae584c547e53873d"
-  tee_addr : "0x19baa72643aa11b28cb6251fd7596201778ead9a"
-  abi: "./pkg/contract/contract.abi"
-  topic: "0x99a038e9d345d0b12130b3b1fb003bf8f2d3a5c27ce2a800bbb1608efff6c591"
-wallet:
-  private_key: ""
-  key: "1234567890abcdef"
-  iv: "123456789asdfghb"
-  private_encode: "7f1faa122198fea574e77eb1a577036bfd7641a2ed928aa0c837dfb5372a9ab92a7bfc065d012f21607f0b2283d77d8233636f9afee909816e51471bc6ed3062dee82d31e83edbda361e06551f6a7ab6"
+chains:
+  - chain_id: 5611
+    chain_name: "opBNB"
+    rpc_url: "https://opbnb-testnet.nodereal.io/v1/9e210feafbec4ed9bd48f855c2bd979a"
+    start_block: 26623154
+    offset_block: 1
+  - chain_id: 5612
+    chain_name: "arbitrum"
+    rpc_url: "https://opbnb-testnet.nodereal.io/v1/9e210feafbec4ed9bd48f855c2bd979a"
+    start_block: 26623154
+    offset_block: 1
+contracts:
+  - addr: "0x39afd848cd4a83cddd06f340ae584c547e53873d"
+    tee_addr : "0x19baa72643aa11b28cb6251fd7596201778ead9a"
+    abi: "./pkg/contract/contract.abi"
+    topic: "0x99a038e9d345d0b12130b3b1fb003bf8f2d3a5c27ce2a800bbb1608efff6c591"
+  - addr: "0x39afd848cd4a83cddd06f340ae584c547e53873d"
+    tee_addr: "0x19baa72643aa11b28cb6251fd7596201778ead9a"
+    abi: "./pkg/contract/contract.abi"
+    topic: "0x99a038e9d345d0b12130b3b1fb003bf8f2d3a5c27ce2a800bbb1608efff6c591"
+wallets:
+  - private_key: ""
+    key: "1234567890abcdef"
+    iv: "123456789asdfghb"
+    private_encode: "7f1faa122198fea574e77eb1a577036bfd7641a2ed928aa0c837dfb5372a9ab92a7bfc065d012f21607f0b2283d77d8233636f9afee909816e51471bc6ed3062dee82d31e83edbda361e06551f6a7ab6"
+  - private_key: ""
+    key: "1234567890abcdef"
+    iv: "123456789asdfghb"
+    private_encode: "7f1faa122198fea574e77eb1a577036bfd7641a2ed928aa0c837dfb5372a9ab92a7bfc065d012f21607f0b2283d77d8233636f9afee909816e51471bc6ed3062dee82d31e83edbda361e06551f6a7ab6"

@@ -34,8 +34,11 @@ func (s *Server) Start(ctx context.Context) error {
 		return err
 	}
 
-	if err = chain.Start(ctx); err != nil {
-		return err
+	for i := 0; i < len(s.cf.Chains); i++ {
+		if err = chain.Start(ctx, i); err != nil {
+			return err
+		}
+
 	}
 
 	s.chain = chain
@@ -46,8 +49,10 @@ func (s *Server) Start(ctx context.Context) error {
 func (s *Server) Stop(ctx context.Context) error {
 	s.logger.WithContext(ctx).Info("worker server stopping")
 
-	if err := s.chain.Stop(ctx); err != nil {
-		s.logger.WithContext(ctx).Error(err)
+	for i := 0; i < len(s.cf.Chains); i++ {
+		if err := s.chain.Stop(ctx, i); err != nil {
+			s.logger.WithContext(ctx).Error(err)
+		}
 	}
 
 	s.logger.WithContext(ctx).Info("worker server stopped")

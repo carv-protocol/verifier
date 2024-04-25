@@ -17,9 +17,9 @@ message Bootstrap {
   Server server = 1;
   Data data = 2;
   ENV env = 3;
-  Chain chain = 4;
-  Contract contract = 5;
-  Wallet wallet = 6;
+  repeated Chain chains = 4;
+  repeated Contract contracts = 5;
+  repeated Wallet wallets = 6;
 }
 
 message Server {
