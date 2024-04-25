@@ -7,7 +7,6 @@ import (
 	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/internal/key_manager"
 	"math/big"
-	"os"
 	"strings"
 	"time"
 
@@ -56,16 +55,6 @@ func NewChain(
 	bootstrap *conf.Bootstrap,
 	logger *log.Helper,
 ) (*Chain, error) {
-	abiFile, err := os.ReadFile(bootstrap.Contract.Abi)
-	if err != nil {
-		return nil, err
-	}
-
-	cAbi, err := abi.JSON(strings.NewReader(string(abiFile)))
-	if err != nil {
-		return nil, errors.Wrap(err, "abi json error")
-	}
-
 	ethClient, err := ethclient.DialContext(ctx, bootstrap.Chain.RpcUrl)
 	if err != nil {
 		return nil, errors.Wrapf(err, "new eth client error, rpc url: %s", bootstrap.Chain.RpcUrl)
@@ -74,6 +63,11 @@ func NewChain(
 	contractObj, err := contract.NewContract(common.HexToAddress(bootstrap.Contract.Addr), ethClient)
 	if err != nil {
 		return nil, errors.Wrapf(err, "NewContract error")
+	}
+
+	cAbi, err := abi.JSON(strings.NewReader(contract.ContractMetaData.ABI))
+	if err != nil {
+		return nil, errors.Wrap(err, "abi json error")
 	}
 
 	privateKey := key_manager.Inst().PrivateKey()

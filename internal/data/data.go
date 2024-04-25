@@ -43,7 +43,7 @@ func NewData(bootstrap *conf.Bootstrap, logger *log.Helper) (*Data, func()) {
 		cf: bootstrap,
 	}
 
-	if bootstrap.Data.Database != nil {
+	if bootstrap.Data != nil && bootstrap.Data.Database != nil {
 		db, err := gorm.Open(mysql.Open(bootstrap.Data.Database.Source), &gorm.Config{
 			Logger:         dblogger.NewTracer(logger),
 			TranslateError: true,

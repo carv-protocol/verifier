@@ -61,8 +61,7 @@ message Chain {
 message Contract {
   string addr = 1;
   string tee_addr = 2;
-  string abi = 3;
-  string topic = 4;
+  string topic = 3;
 }
 
 message Wallet {
