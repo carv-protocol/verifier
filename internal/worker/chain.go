@@ -297,7 +297,13 @@ func (c *Chain) queryChain(ctx context.Context) error {
 		// Verify attestation
 		result, err := verifyAttestation(c, unpackedData.Attestation)
 		if err != nil {
-			return errors.Wrap(err, "verify attestation error")
+			// If attestation is unable to be parsed and verified, this attestation should be ignored by all verifiers
+			c.logger.WithContext(ctx).Error(
+				"verify failed, attestation id: %s, error: %s",
+				hex.EncodeToString(unpackedData.AttestationId[:]),
+				err.Error(),
+			)
+			continue
 		}
 
 		c.verifyResultChan <- verifyResult{
