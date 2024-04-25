@@ -31,9 +31,7 @@ func wireApp(bootstrap *conf.Bootstrap, logger log.Logger, helper *log.Helper) (
 	verifierService := service.NewVerifierService(verifierUsecase)
 	grpcServer := server.NewGRPCServer(bootstrap, verifierService)
 	httpServer := server.NewHTTPServer(bootstrap, verifierService)
-	transactionRepo := data.NewTransactionRepo(dataData, logger)
-	reportTeeAttestationEventRepo := data.NewReportTeeAttestationEventRepo(dataData, logger)
-	workerServer := worker.NewWorkerServer(bootstrap, dataData, helper, verifierRepo, transactionRepo, reportTeeAttestationEventRepo)
+	workerServer := worker.NewWorkerServer(bootstrap, helper)
 	app := newApp(logger, grpcServer, httpServer, workerServer)
 	return app, func() {
 		cleanup()

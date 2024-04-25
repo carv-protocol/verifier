@@ -2,10 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/carv-protocol/verifier/internal/conf"
-	"github.com/carv-protocol/verifier/internal/key_manager"
-	"github.com/carv-protocol/verifier/internal/worker"
-	"github.com/carv-protocol/verifier/pkg/stdlogger"
 	"os"
 
 	"github.com/go-kratos/kratos/v2"
@@ -16,6 +12,11 @@ import (
 	"github.com/go-kratos/kratos/v2/transport/grpc"
 	"github.com/go-kratos/kratos/v2/transport/http"
 	_ "go.uber.org/automaxprocs"
+
+	"github.com/carv-protocol/verifier/internal/conf"
+	"github.com/carv-protocol/verifier/internal/key_manager"
+	"github.com/carv-protocol/verifier/internal/worker"
+	"github.com/carv-protocol/verifier/pkg/stdlogger"
 )
 
 // go build -ldflags "-X main.Version=x.y.z"
@@ -39,7 +40,7 @@ type FlagVar struct {
 }
 
 func init() {
-	flag.StringVar(&flagVar.Conf, "conf", "../../configs", "config path, eg: -conf config.yaml")
+	flag.StringVar(&flagVar.Conf, "conf", "configs", "config path, eg: -conf config.yaml")
 	flag.StringVar(&flagVar.PrivateKey, "private-key", "", "private key, eg: -private-key 9a8bd8c....21dec")
 	flag.StringVar(&flagVar.KeystorePath, "keystore-path", "", "keystore path, eg: -keystore-path .")
 	flag.StringVar(&flagVar.KeystorePassword, "keystore-password", "", "keystore password, eg: -keystore-password 123456")
