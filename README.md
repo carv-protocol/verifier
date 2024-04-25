@@ -6,7 +6,15 @@ For more information about verifier please read [verifier-node-explained](https:
 
 ## Building the source
 
-Building verifier requires a Go (version 1.21 or later). You can install it using your favourite package manager.
+Building verifier requires a Go (version 1.21 or later). You can install it using your favourite package manager. Then run
+
+```shell
+make build
+```
+
+After this, the verifier executable program has been compiled. If you just need to run the node, you can jump directly to [Run via binary program](#Run-via-binary-program).
+
+If you want to become a contributor to this project, you can follow the following steps to compile verifier after completing the modifications.
 
 To download dependencies during compilation, run
 
@@ -40,7 +48,7 @@ Recommended:
 
 ### Run via binary program
 
-After executing `make all`, the verifier executable file will be compiled into the `./bin` directory. You need to switch to the `./bin` directory before executing verifier. run
+After executing `make build` or `make all`, the verifier executable file will be compiled into the `./bin` directory. You need to switch to the `./bin` directory before executing verifier. run
 ```shell
 cd bin
 ```
