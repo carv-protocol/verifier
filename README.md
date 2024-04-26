@@ -95,7 +95,7 @@ Configure the plain text private key: Set `wallet.mode` in the configuration fil
 One of the quickest ways to run verifier is by using Docker:
 
 ```shell
-docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf carv/verifier
+docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf carvprotocol/verifier
 ```
 
 Note that you need to configure your private key in the configuration file. Similarly, you can configure both plaintext and keystore methods.
