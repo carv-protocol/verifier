@@ -5,8 +5,9 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"github.com/carv-protocol/verifier/pkg/dcap"
+	"github.com/carv-protocol/verifier/internal/conf"
+	"github.com/carv-protocol/verifier/internal/key_manager"
 	"math/big"
-	"os"
 	"strings"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/pkg/errors"
 
-	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/pkg/contract"
 )
 
@@ -56,16 +56,6 @@ func NewChain(
 	bootstrap *conf.Bootstrap,
 	logger *log.Helper,
 ) (*Chain, error) {
-	abiFile, err := os.ReadFile(bootstrap.Contract.Abi)
-	if err != nil {
-		return nil, err
-	}
-
-	cAbi, err := abi.JSON(strings.NewReader(string(abiFile)))
-	if err != nil {
-		return nil, errors.Wrap(err, "abi json error")
-	}
-
 	ethClient, err := ethclient.DialContext(ctx, bootstrap.Chain.RpcUrl)
 	if err != nil {
 		return nil, errors.Wrapf(err, "new eth client error, rpc url: %s", bootstrap.Chain.RpcUrl)
@@ -75,16 +65,13 @@ func NewChain(
 	if err != nil {
 		return nil, errors.Wrapf(err, "NewContract error")
 	}
-	privateKeyBytes, err := Sm4Decrypt(bootstrap)
+
+	cAbi, err := abi.JSON(strings.NewReader(contract.ContractMetaData.ABI))
 	if err != nil {
-		return nil, errors.Wrap(err, "pk decrypt error")
+		return nil, errors.Wrap(err, "abi json error")
 	}
 
-	privateKey, err := crypto.HexToECDSA(string(privateKeyBytes))
-	if err != nil {
-		return nil, errors.Wrap(err, "pk sm4 HexToECDSA error")
-	}
-
+	privateKey := key_manager.Inst().PrivateKey()
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
@@ -208,6 +195,7 @@ func (c *Chain) monitorErrors(ctx context.Context) {
 }
 
 func (c *Chain) SendAttestationTrx(ctx context.Context, attestationIds [][32]byte, results []bool) (string, error) {
+
 	nonce, err := c.ethClient.PendingNonceAt(ctx, c.verifierAddress)
 	if err != nil {
 		return "", errors.Wrap(err, "eth client get Nonce error")
