@@ -61,13 +61,18 @@ message Chain {
 message Contract {
   string addr = 1;
   string tee_addr = 2;
-  string abi = 3;
-  string topic = 4;
+  string topic = 3;
 }
 
 message Wallet {
-  string private_key = 1;
-  string key = 2;
-  string iv = 3;
-  string private_encode = 4;
+  enum Mode {
+    ModeEnvVar = 0;
+    ModePrivateKey = 1;
+    ModeKeyStore = 2;
+  }
+
+  Mode mode = 1;
+  string private_key = 2;
+  string keystore_path = 3;
+  string keystore_password = 4;
 }

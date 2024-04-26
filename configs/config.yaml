@@ -6,14 +6,6 @@ server:
   grpc:
     addr: 0.0.0.0:9000
     timeout: 1s
-data:
-  database:
-    driver: "mysql"
-    source: "verifier:nS6hZzhwbYhAJd56@tcp(124.222.98.27:3306)/verifier?parseTime=True"
-    max_open_connections: 20
-    max_idle_connections: 10
-    conn_max_lifetime: 360s
-    conn_max_idle_time: 180s
 chain:
   chain_id: 5611
   chain_name: "opBNB"
@@ -23,10 +15,9 @@ chain:
 contract:
   addr: "0x39afd848cd4a83cddd06f340ae584c547e53873d"
   tee_addr : "0x19baa72643aa11b28cb6251fd7596201778ead9a"
-  abi: "./pkg/contract/contract.abi"
   topic: "0x99a038e9d345d0b12130b3b1fb003bf8f2d3a5c27ce2a800bbb1608efff6c591"
 wallet:
+  mode: 0
   private_key: ""
-  key: "1234567890abcdef"
-  iv: "123456789asdfghb"
-  private_encode: "7f1faa122198fea574e77eb1a577036bfd7641a2ed928aa0c837dfb5372a9ab92a7bfc065d012f21607f0b2283d77d8233636f9afee909816e51471bc6ed3062dee82d31e83edbda361e06551f6a7ab6"
+  keystore_path: ""
+  keystore_password: ""

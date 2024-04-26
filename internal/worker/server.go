@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-
 	"github.com/carv-protocol/verifier/internal/conf"
 
 	"github.com/go-kratos/kratos/v2/log"
@@ -31,10 +30,12 @@ func (s *Server) Start(ctx context.Context) error {
 
 	chain, err := NewChain(ctx, s.cf, s.logger)
 	if err != nil {
+		s.logger.WithContext(ctx).Fatalf("new chain error: %v", err)
 		return err
 	}
 
 	if err = chain.Start(ctx); err != nil {
+		s.logger.WithContext(ctx).Fatalf("chain start error: %v", err)
 		return err
 	}
 
