@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"github.com/carv-protocol/verifier/pkg/dcap"
 	"math/big"
 	"os"
 	"strings"
@@ -295,7 +296,7 @@ func (c *Chain) queryChain(ctx context.Context) error {
 		}
 
 		// Verify attestation
-		result, err := verifyAttestation(c, unpackedData.Attestation)
+		result, err := dcap.VerifyAttestation(unpackedData.Attestation)
 		if err != nil {
 			// If attestation is unable to be parsed and verified, this attestation should be ignored by all verifiers
 			c.logger.WithContext(ctx).Error(
