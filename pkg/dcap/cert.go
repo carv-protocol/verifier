@@ -56,7 +56,6 @@ type PCK struct {
 }
 
 func NewPCK(cert *x509.Certificate) (*PCK, error) {
-
 	var sgxExt pkix.Extension
 	for _, ext := range cert.Extensions {
 		if ext.Id.Equal(OIDSGXExtension) {
@@ -122,12 +121,12 @@ func parseTCB(sgxExtMap map[string]asn1.RawValue, compSVNOIDs []asn1.ObjectIdent
 	var tcb TCB
 	pceSVNRaw, exists := sgxExtMap[fmt.Sprintf("%v", pceSVNOID)]
 	if !exists {
-		return tcb, fmt.Errorf("PCE SVN OID not found: %v", pceSVNOID)
+		return tcb, errors.New(fmt.Sprintf("PCE SVN OID not found: %v", pceSVNOID))
 	}
 	var sequence []Ext
 	_, err := asn1.Unmarshal(pceSVNRaw.FullBytes, &sequence)
 	if err != nil {
-		return tcb, fmt.Errorf("failed to unmarshal ASN.1 sequence: %w", err)
+		return tcb, errors.New(fmt.Sprintf("failed to unmarshal ASN.1 sequence: %w", err))
 	}
 	pceExtMap := make(map[string]asn1.RawValue)
 	for i, ext := range sequence {
@@ -135,7 +134,7 @@ func parseTCB(sgxExtMap map[string]asn1.RawValue, compSVNOIDs []asn1.ObjectIdent
 	}
 	pceSVN, err := parseUint16ASN1(sequence)
 	if err != nil {
-		return tcb, fmt.Errorf("error parsing PCE SVN: %w", err)
+		return tcb, errors.New(fmt.Sprintf("error parsing PCE SVN: %w", err))
 	}
 	tcb.PceSVN = pceSVN
 	var compSVNArray []byte
@@ -151,7 +150,7 @@ func parseTCB(sgxExtMap map[string]asn1.RawValue, compSVNOIDs []asn1.ObjectIdent
 	j := 0
 	for i := 0; i < len(compSVNArray); i++ {
 		if j > len(tcb.CompSVNArray) {
-			return tcb, fmt.Errorf("error parsing Comp SVN: %w", err)
+			return tcb, errors.New(fmt.Sprintf("error parsing Comp SVN: %w", err))
 		}
 		if compSVNArray[i] > 0 {
 			tcb.CompSVNArray[j] = compSVNArray[i]
@@ -175,7 +174,7 @@ func parseUint16ASN1(sequence []Ext) (uint16, error) {
 			return num, nil
 		}
 	}
-	return 0, fmt.Errorf("PCE SVN not found in ASN.1 sequence")
+	return 0, errors.New("PCE SVN not found in ASN.1 sequence")
 
 }
 
