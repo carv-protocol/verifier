@@ -27,7 +27,11 @@ func VerifyAttestation(data string) (bool, error) {
 		return false, err
 	}
 
-	err = quote.VerifyQuote(b64Data, nil, &quoteAuth)
+	result, err := TrustedLoad("./assets/trusted.json")
+	if err != nil {
+		return false, err
+	}
+	err = quote.VerifyQuote(b64Data, &result, &quoteAuth)
 	if err != nil {
 		return false, err
 	}
