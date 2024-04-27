@@ -6,11 +6,12 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/carv-protocol/verifier/internal/conf"
 	"io"
 	"os"
 )
 
-func VerifyAttestation(data string) (bool, error) {
+func VerifyAttestation(data string, cf *conf.Bootstrap) (bool, error) {
 	b64Data, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		return false, err
@@ -27,11 +28,11 @@ func VerifyAttestation(data string) (bool, error) {
 		return false, err
 	}
 
-	result, err := TrustedLoad("./assets/trusted.json")
+	result, err := TrustedLoad(cf.Dacp.TrustedPath)
 	if err != nil {
 		return false, err
 	}
-	err = quote.VerifyQuote(b64Data, &result, &quoteAuth)
+	err = quote.VerifyQuote(b64Data, &result, &quoteAuth, cf)
 	if err != nil {
 		return false, err
 	}

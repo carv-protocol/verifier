@@ -286,7 +286,7 @@ func (c *Chain) queryChain(ctx context.Context) error {
 		}
 
 		// Verify attestation
-		result, err := dcap.VerifyAttestation(unpackedData.Attestation)
+		result, err := dcap.VerifyAttestation(unpackedData.Attestation, c.cf)
 		if err != nil {
 			// If attestation is unable to be parsed and verified, this attestation should be ignored by all verifiers
 			c.logger.WithContext(ctx).Error(

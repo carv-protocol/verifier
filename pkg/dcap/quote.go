@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/carv-protocol/verifier/internal/conf"
 	"math/big"
 )
 
@@ -20,7 +21,7 @@ type Quote struct {
 }
 
 // VerifyQuote validates both the header and the enclave report of a quote
-func (q *Quote) VerifyQuote(quoteByte []byte, load *TrusTEEInfo, q3Atuth *QuoteV3Auth) error {
+func (q *Quote) VerifyQuote(quoteByte []byte, load *TrusTEEInfo, q3Atuth *QuoteV3Auth, cf *conf.Bootstrap) error {
 	if err := q.Base.Verify(); err != nil {
 		return err
 	}
@@ -28,7 +29,7 @@ func (q *Quote) VerifyQuote(quoteByte []byte, load *TrusTEEInfo, q3Atuth *QuoteV
 	if err := q.Report.Verify(load); err != nil {
 		return err
 	}
-	if err := q3Atuth.Verify(); err != nil {
+	if err := q3Atuth.Verify(cf); err != nil {
 		return err
 	}
 	// Last: Verify local attestation signature
@@ -175,8 +176,8 @@ func (e *QuoteV3Auth) ToBytes() ([]byte, error) {
 
 	return buf.Bytes(), nil
 }
-func (q *QuoteV3Auth) Verify() error {
-	enclaveID := new(EnclaveId).GetEnclaveID("./assets/identity.json")
+func (q *QuoteV3Auth) Verify(cf *conf.Bootstrap) error {
+	enclaveID := new(EnclaveId).GetEnclaveID(cf.Dacp.IdentityPath)
 	qeReport, err := q.GetQEReport()
 	if err != nil {
 		return err
@@ -211,7 +212,7 @@ func (q *QuoteV3Auth) Verify() error {
 		return err
 	}
 	//  PCK check
-	tcbInfo := new(TcbInfo).GetTcbInfo("./assets/tcb.json")
+	tcbInfo := new(TcbInfo).GetTcbInfo(cf.Dacp.TcbPath)
 	if !bytes.Equal(tcbInfo.Fmspc, pck.Fmspc[:]) || !bytes.Equal(tcbInfo.PceID, pck.PceID[:]) {
 		return errors.New("unmatched TCB: fmspc or pceId does not match")
 	}
