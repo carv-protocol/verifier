@@ -4,14 +4,15 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+
 	"math/big"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/carv-protocol/verifier/internal/conf"
-	"github.com/carv-protocol/verifier/internal/data"
+	"github.com/carv-protocol/verifier/internal/key_manager"
 	"github.com/carv-protocol/verifier/pkg/contract"
+	"github.com/carv-protocol/verifier/pkg/dcap"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -20,37 +21,43 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-kratos/kratos/v2/log"
+
 	"github.com/pkg/errors"
 )
 
 const (
-	defaultBlockNumberChanLength = 10
+	// Buffer size for channel storing verification results
+	verifyResultChannelCapacity = 10
+
+	// Maximum number of blocks per log query
+	maxBlocksPerQuery = 100
 )
 
 type Chain struct {
-	cf           *conf.Bootstrap
-	data         *data.Data
-	logger       *log.Helper
-	verifierRepo *data.VerifierRepo
-	cAbi         abi.ABI
-	ethClient    *ethclient.Client
-	contractObj  *contract.Contract
+	cf              *conf.Bootstrap
+	logger          *log.Helper
+	cAbi            abi.ABI
+	ethClient       *ethclient.Client
+	contractObj     *contract.Contract
+	verifierAddress common.Address
+	verifierPrivKey *ecdsa.PrivateKey
 
-	stopChan             chan struct{}
-	blockNumberChan      chan int64
-	latestBlockNumber    int64
-	processedBlockNumber int64
-	processingFlag       bool
-
-	lock sync.RWMutex
+	stopChan          chan struct{}
+	verifyResultChan  chan verifyResult
+	errChan           chan error
+	latestBlockNumber int64
 }
 
-func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, logger *log.Helper, verifierRepo *data.VerifierRepo) (*Chain, error) {
-	cAbi, err := abi.JSON(strings.NewReader(bootstrap.Contract.Abi))
-	if err != nil {
-		return nil, errors.Wrap(err, "abi json error")
-	}
+type verifyResult struct {
+	attestationID [32]byte
+	result        bool
+}
 
+func NewChain(
+	ctx context.Context,
+	bootstrap *conf.Bootstrap,
+	logger *log.Helper,
+) (*Chain, error) {
 	ethClient, err := ethclient.DialContext(ctx, bootstrap.Chain.RpcUrl)
 	if err != nil {
 		return nil, errors.Wrapf(err, "new eth client error, rpc url: %s", bootstrap.Chain.RpcUrl)
@@ -61,49 +68,58 @@ func NewChain(ctx context.Context, bootstrap *conf.Bootstrap, data *data.Data, l
 		return nil, errors.Wrapf(err, "NewContract error")
 	}
 
-	chain := &Chain{
-		cf:           bootstrap,
-		data:         data,
-		logger:       logger,
-		verifierRepo: verifierRepo,
-		cAbi:         cAbi,
-		ethClient:    ethClient,
-		contractObj:  contractObj,
-
-		stopChan:        make(chan struct{}),
-		blockNumberChan: make(chan int64, defaultBlockNumberChanLength),
+	cAbi, err := abi.JSON(strings.NewReader(contract.ContractMetaData.ABI))
+	if err != nil {
+		return nil, errors.Wrap(err, "abi json error")
 	}
 
-	return chain, nil
+	privateKey := key_manager.Inst().PrivateKey()
+	publicKey := privateKey.Public()
+	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
+	if !ok {
+		return nil, errors.New("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
+	}
+
+	verifierAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+
+	return &Chain{
+		cf:              bootstrap,
+		logger:          logger,
+		cAbi:            cAbi,
+		ethClient:       ethClient,
+		contractObj:     contractObj,
+		verifierAddress: verifierAddress,
+		verifierPrivKey: privateKey,
+
+		stopChan:         make(chan struct{}),
+		verifyResultChan: make(chan verifyResult, verifyResultChannelCapacity),
+		errChan:          make(chan error),
+	}, nil
 }
 
 func (c *Chain) Start(ctx context.Context) error {
-	startBlockNumber := c.cf.Chain.StartBlock
-	// todo read from db
-	//if record != nil && record.BlockNumber > startBlockNumber {
-	//	startBlockNumber = record.BlockNumber + 1
-	//}
-	if startBlockNumber == 0 {
+	c.latestBlockNumber = c.cf.Chain.StartBlock
+
+	// Retrieve the latest block number if it has not been specified
+	if c.latestBlockNumber == 0 {
 		blockNumber, err := c.ethClient.BlockNumber(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "chain [%s] get BlockNumber error", c.cf.Chain.ChainName)
 		}
-		startBlockNumber = int64(blockNumber)
 
-		c.lock.Lock()
 		c.latestBlockNumber = int64(blockNumber)
-		c.lock.Unlock()
 	}
 
-	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, startBlockNumber)
+	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
-	c.lock.Lock()
-	c.processedBlockNumber = startBlockNumber - 1
-	c.blockNumberChan <- startBlockNumber
-	c.lock.Unlock()
+	// Monitor and verify on-chain TEE attestations
+	go c.queryAndVerify(ctx)
 
-	go c.run(ctx)
-	go c.stick(ctx)
+	// Batch post verification results to the blockchain
+	go c.batchPost(ctx)
+
+	// Monitor errors arising from querying and posting processes
+	go c.monitorErrors(ctx)
 
 	return nil
 }
@@ -120,190 +136,122 @@ func (c *Chain) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (c *Chain) run(ctx context.Context) {
+// Query on-chain events and verify the TEE attestation
+func (c *Chain) queryAndVerify(ctx context.Context) {
+	eventQueryTicker := time.NewTicker(1 * time.Second)
+
 	for {
 		select {
+		case <-eventQueryTicker.C:
+			go func() {
+				if err := c.queryChain(ctx); err != nil {
+					c.errChan <- err
+				}
+			}()
 		case <-c.stopChan:
-			c.logger.WithContext(ctx).Infof("chain run [%s] stopping", c.cf.Chain.ChainName)
+			c.logger.WithContext(ctx).Infof("chain queryAndVerify [%s] stopping", c.cf.Chain.ChainName)
 			return
-		case blockNumber := <-c.blockNumberChan:
-			c.Process(ctx, blockNumber)
 		}
 	}
 }
 
-func (c *Chain) stick(ctx context.Context) {
-	latestBlockNumberTicker := time.NewTicker(1 * time.Second)
-	sendBlockNumberChanTicker := time.NewTicker(1 * time.Second)
-	recordStatusTicker := time.NewTicker(1 * time.Second)
+// Batch verify results and post them on-chain
+func (c *Chain) batchPost(ctx context.Context) {
+	batchVerifyResultTicker := time.NewTicker(1 * time.Second)
+	resultList := make([]verifyResult, 0)
 
 	for {
 		select {
+		case r := <-c.verifyResultChan:
+			resultList = append(resultList, r)
+		case <-batchVerifyResultTicker.C:
+			if len(resultList) == 0 {
+				continue
+			}
+
+			go func(rl []verifyResult) {
+				if err := c.sendBatchResult(ctx, rl); err != nil {
+					c.errChan <- err
+				}
+			}(resultList[:])
+
+			resultList = make([]verifyResult, 0)
 		case <-c.stopChan:
-			c.logger.WithContext(ctx).Infof("chain stick [%s] stopping", c.cf.Chain.ChainName)
+			c.logger.WithContext(ctx).Infof("chain batchPost [%s] stopping", c.cf.Chain.ChainName)
 			return
-		case <-latestBlockNumberTicker.C:
-			go c.UpdateLatestBlockNumber(ctx)
-		case <-sendBlockNumberChanTicker.C:
-			go c.SendBlockNumberChanByTicker(ctx)
-		case <-recordStatusTicker.C:
-			go c.RecordStatus(ctx)
 		}
 	}
 }
 
-func (c *Chain) RecordStatus(ctx context.Context) {
-	c.logger.WithContext(ctx).Infof("chain [%s] status, latestBlockNumber: %d, processedBlockNumber: %d, processingFlag: %v, blockNumberChanLength: %d",
-		c.cf.Chain.ChainName, c.GetLatestBlockNumber(), c.GetProcessedBlockNumber(), c.GetProcessingFlag(), c.GetBlockNumberChanLength())
+// Monitor errors during both querying and posting processes
+func (c *Chain) monitorErrors(ctx context.Context) {
+	for {
+		select {
+		case err := <-c.errChan:
+			c.logger.WithContext(ctx).Errorf("mointor error: %s", err.Error())
+		case <-c.stopChan:
+			c.logger.WithContext(ctx).Infof("chain batchPost [%s] stopping", c.cf.Chain.ChainName)
+			return
+		}
+	}
 }
 
-func (c *Chain) UpdateLatestBlockNumber(ctx context.Context) {
-	blockNumber, err := c.ethClient.BlockNumber(ctx)
+func (c *Chain) SendAttestationTrx(ctx context.Context, attestationIds [][32]byte, results []bool) (string, error) {
+
+	nonce, err := c.ethClient.PendingNonceAt(ctx, c.verifierAddress)
 	if err != nil {
-		c.logger.WithContext(ctx).Errorf("chain [%s] get BlockNumber error: %s", c.cf.Chain.ChainName, err)
+		return "", errors.Wrap(err, "eth client get Nonce error")
 	}
 
-	c.lock.Lock()
-	c.latestBlockNumber = int64(blockNumber)
-	c.lock.Unlock()
-}
-
-func (c *Chain) GetLatestBlockNumber() int64 {
-	c.lock.RLock()
-	blockNumber := c.latestBlockNumber
-	c.lock.RUnlock()
-
-	return blockNumber
-}
-
-func (c *Chain) SetProcessingFlag(b bool) {
-	c.lock.Lock()
-	c.processingFlag = b
-	c.lock.Unlock()
-}
-
-func (c *Chain) GetProcessingFlag() bool {
-	c.lock.RLock()
-	b := c.processingFlag
-	c.lock.RUnlock()
-
-	return b
-}
-
-func (c *Chain) SetProcessedBlockNumber(processedBlockNumber int64) {
-	c.lock.Lock()
-	c.processedBlockNumber = processedBlockNumber
-	c.lock.Unlock()
-}
-
-func (c *Chain) GetProcessedBlockNumber() int64 {
-	c.lock.RLock()
-	processedBlockNumber := c.processedBlockNumber
-	c.lock.RUnlock()
-
-	return processedBlockNumber
-}
-
-func (c *Chain) GetBlockNumberChanLength() int {
-	c.lock.RLock()
-	blockNumberChanLength := len(c.blockNumberChan)
-	c.lock.RUnlock()
-
-	return blockNumberChanLength
-}
-
-func (c *Chain) IsBlockNumberChanFull() bool {
-	c.lock.RLock()
-	blockNumberChanLength := len(c.blockNumberChan)
-	c.lock.RUnlock()
-
-	return blockNumberChanLength >= defaultBlockNumberChanLength
-}
-
-func (c *Chain) SendBlockNumberChanByTicker(ctx context.Context) {
-	if c.GetProcessingFlag() {
-		return
-	}
-	if c.IsBlockNumberChanFull() {
-		return
-	}
-
-	latestBlockNumber := c.GetLatestBlockNumber()
-	processedBlockNumber := c.GetProcessedBlockNumber()
-
-	if latestBlockNumber > processedBlockNumber {
-		c.lock.Lock()
-		c.blockNumberChan <- processedBlockNumber + 1
-		c.lock.Unlock()
-	}
-}
-
-func (c *Chain) getEndBlockNumber(startBlockNumber int64) int64 {
-	endBlockNumber := startBlockNumber
-
-	latestBlockNumber := c.GetLatestBlockNumber()
-	if startBlockNumber >= latestBlockNumber {
-		return endBlockNumber
-	}
-
-	if latestBlockNumber-startBlockNumber > c.cf.Chain.OffsetBlock {
-		endBlockNumber = startBlockNumber + c.cf.Chain.OffsetBlock
-	} else {
-		endBlockNumber = latestBlockNumber - 1
-	}
-
-	return endBlockNumber
-}
-
-func (c *Chain) verifyAttestation(ctx context.Context, attestationIds [][32]byte, results []bool) error {
-	privateKey, err := crypto.HexToECDSA(c.cf.Wallet.PrivateKey)
-	if err != nil {
-		return errors.Wrap(err, "pk crypto HexToECDSA error")
-	}
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return errors.New("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
-	}
-	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-
-	nonce, err := c.ethClient.PendingNonceAt(ctx, fromAddress)
-	if err != nil {
-		return errors.Wrap(err, "eth client get Nonce error")
-	}
 	gasPrice, err := c.ethClient.SuggestGasPrice(ctx)
 	if err != nil {
-		return errors.Wrap(err, "eth client get SuggestGasPrice error")
+		return "", errors.Wrap(err, "eth client get SuggestGasPrice error")
 	}
 
 	chainID, err := c.ethClient.ChainID(ctx)
 	if err != nil {
-		return errors.Wrap(err, "eth client get ChainID error")
+		return "", errors.Wrap(err, "eth client get ChainID error")
 	}
 
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
+	auth, err := bind.NewKeyedTransactorWithChainID(c.verifierPrivKey, chainID)
 	if err != nil {
-		return errors.Wrap(err, "bind NewKeyedTransactorWithChainID error")
+		return "", errors.Wrap(err, "bind NewKeyedTransactorWithChainID error")
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
-	//auth.Value = big.NewInt(0)     // in wei
-	//auth.GasLimit = uint64(300000) // in units
 	auth.GasPrice = gasPrice
 
 	tx, err := c.contractObj.VerifyAttestationBatch(auth, attestationIds, results)
 	if err != nil {
-		return errors.Wrap(err, "contract VerifyAttestationBatch error")
+		return "", errors.Wrap(err, "contract VerifyAttestationBatch error")
 	}
 
-	c.logger.WithContext(ctx).Infof("tx hash: %s", tx.Hash().Hex())
+	txHash := tx.Hash().Hex()
 
-	return nil
+	c.logger.WithContext(ctx).Infof("tx hash: %s", txHash)
+
+	return txHash, nil
 }
 
-func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber int64) error {
-	q := ethereum.FilterQuery{
+func (c *Chain) queryChain(ctx context.Context) error {
+	startBlockNumber := c.latestBlockNumber
+	endBlockNumber, err := c.ethClient.BlockNumber(ctx)
+	if err != nil {
+		return errors.Wrapf(err, "chain [%s] get BlockNumber error", c.cf.Chain.ChainName)
+	}
+
+	// If there is no new blocks
+	if startBlockNumber >= int64(endBlockNumber) {
+		return nil
+	}
+
+	// Limit the maximum number of blocks that can be queried per run
+	if startBlockNumber+maxBlocksPerQuery < int64(endBlockNumber) {
+		endBlockNumber = uint64(startBlockNumber + maxBlocksPerQuery)
+	}
+
+	query := ethereum.FilterQuery{
 		FromBlock: big.NewInt(startBlockNumber),
-		ToBlock:   big.NewInt(endBlockNumber),
+		ToBlock:   big.NewInt(int64(endBlockNumber)),
 		Addresses: []common.Address{
 			common.HexToAddress(c.cf.Contract.Addr),
 		},
@@ -314,71 +262,67 @@ func (c *Chain) process(ctx context.Context, startBlockNumber, endBlockNumber in
 		},
 	}
 
-	cLogs, err := c.ethClient.FilterLogs(ctx, q)
+	cLogs, err := c.ethClient.FilterLogs(ctx, query)
 	if err != nil {
 		return errors.Wrap(err, "client FilterLogs error")
 	}
 
-	var logInfoList []LogInfo
 	for _, cLog := range cLogs {
 		unpackedData, err := c.contractObj.ParseReportTeeAttestation(cLog)
 		if err != nil {
 			return errors.Wrap(err, "contract ParseReportTeeAttestation error")
 		}
 
-		logInfoList = append(logInfoList, LogInfo{
+		logInfo := LogInfo{
 			BlockNumber:        cLog.BlockNumber,
 			ContractAddress:    cLog.Address,
 			TxHash:             cLog.TxHash,
+			TxIndex:            unpackedData.Raw.TxIndex,
+			TeeAddress:         unpackedData.TeeAddress,
 			CampaignId:         unpackedData.CampaignId,
 			AttestationIdBytes: unpackedData.AttestationId,
 			AttestationIdStr:   hex.EncodeToString(unpackedData.AttestationId[:]),
 			Attestation:        unpackedData.Attestation,
-		})
+		}
+
+		// Verify attestation
+		result, err := dcap.VerifyAttestation(unpackedData.Attestation, c.cf)
+		if err != nil {
+			// If attestation is unable to be parsed and verified, this attestation should be ignored by all verifiers
+			c.logger.WithContext(ctx).Error(
+				"verify failed, attestation id: %s, error: %s",
+				hex.EncodeToString(unpackedData.AttestationId[:]),
+				err.Error(),
+			)
+			continue
+		}
+
+		c.verifyResultChan <- verifyResult{
+			attestationID: unpackedData.AttestationId,
+			result:        result,
+		}
+
+		c.logger.WithContext(ctx).Infof("logInfo: %+v", logInfo)
 	}
 
-	c.logger.WithContext(ctx).Infof("logInfoList: %+v", logInfoList)
-
-	// todo verify
-
-	// todo report
-	//c.verifyAttestation()
-
-	// todo db store
+	c.logger.WithContext(ctx).Infof("start block %d, end block %d", startBlockNumber, endBlockNumber)
+	c.latestBlockNumber = int64(endBlockNumber) + 1
 
 	return nil
 }
 
-func (c *Chain) Process(ctx context.Context, startBlockNumber int64) {
-	processedBlockNumber := c.GetProcessedBlockNumber()
-	if processedBlockNumber != startBlockNumber-1 {
-		c.logger.WithContext(ctx).Warnf("chain [%s] Process, startBlockNumber: %d, processedBlockNumber: %d", c.cf.Chain.ChainName, startBlockNumber, processedBlockNumber)
-		return
+// Batch process multiple attestations across a specified range of blocks
+func (c *Chain) sendBatchResult(ctx context.Context, resultList []verifyResult) error {
+	attestationIds := make([][32]byte, len(resultList))
+	verifyResults := make([]bool, len(resultList))
+	for i, r := range resultList {
+		attestationIds[i] = r.attestationID
+		verifyResults[i] = r.result
 	}
-
-	c.SetProcessingFlag(true)
-	defer c.SetProcessingFlag(false)
-
-	endBlockNumber := c.getEndBlockNumber(startBlockNumber)
-
-	c.logger.WithContext(ctx).Infof("chain [%s] Process, latestBlockNumber: %d, startBlockNumber: %d, endBlockNumber: %d", c.cf.Chain.ChainName, c.GetLatestBlockNumber(), startBlockNumber, endBlockNumber)
-
-	err := c.process(ctx, startBlockNumber, endBlockNumber)
+	_, err := c.SendAttestationTrx(ctx, attestationIds, verifyResults)
 	if err != nil {
-		c.logger.WithContext(ctx).Errorf("chain [%s] Process, process error: %s", c.cf.Chain.ChainName, err)
-		return
+		return err
 	}
 
-	c.SetProcessedBlockNumber(endBlockNumber)
-
-	if c.IsBlockNumberChanFull() {
-		return
-	}
-
-	latestBlockNumber := c.GetLatestBlockNumber()
-	c.lock.Lock()
-	if latestBlockNumber > endBlockNumber {
-		c.blockNumberChan <- endBlockNumber + 1
-	}
-	c.lock.Unlock()
+	return nil
 }

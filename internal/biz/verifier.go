@@ -3,11 +3,11 @@ package biz
 import (
 	"context"
 
-	v1 "github.com/carv-protocol/verifier/api/verifier/v1"
-	"github.com/carv-protocol/verifier/internal/infra/data/model"
-
 	"github.com/go-kratos/kratos/v2/errors"
 	"github.com/go-kratos/kratos/v2/log"
+
+	v1 "github.com/carv-protocol/verifier/api/verifier/v1"
+	"github.com/carv-protocol/verifier/internal/infra/data/model"
 )
 
 var (
