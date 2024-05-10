@@ -11,8 +11,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/carv-protocol/verifier/internal/conf"
 	"math/big"
+
+	"github.com/carv-protocol/verifier/internal/conf"
 )
 
 type Quote struct {
@@ -290,7 +291,6 @@ func GetQuoteV3Auth(quote []byte) (QuoteV3Auth, error) {
 		return QuoteV3Auth{}, errors.New("quote too short")
 	}
 	signatureLen := binary.LittleEndian.Uint32(quote[432:436])
-	fmt.Println(signatureLen)
 	var quoteAuth QuoteV3Auth
 	b := quote[436 : 436+signatureLen]
 	err := quoteAuth.FromBytes(b)

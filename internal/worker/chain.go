@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
-
 	"math/big"
 	"strings"
 	"time"
@@ -18,10 +17,10 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-kratos/kratos/v2/log"
-
 	"github.com/pkg/errors"
 )
 
@@ -31,6 +30,10 @@ const (
 
 	// Maximum number of blocks per log query
 	maxBlocksPerQuery = 100
+)
+
+var (
+	nonRetriableErrors = []error{core.ErrInsufficientFunds, core.ErrInsufficientFundsForTransfer}
 )
 
 type Chain struct {
@@ -98,7 +101,7 @@ func NewChain(
 }
 
 func (c *Chain) Start(ctx context.Context) error {
-	c.latestBlockNumber = c.cf.Chain.StartBlock
+	c.latestBlockNumber = c.cf.Chain.GetStartBlock()
 
 	// Retrieve the latest block number if it has not been specified
 	if c.latestBlockNumber == 0 {
@@ -109,6 +112,9 @@ func (c *Chain) Start(ctx context.Context) error {
 
 		c.latestBlockNumber = int64(blockNumber)
 	}
+
+	// Apply the offset to begin verification starting from the latest unverified attestation
+	c.latestBlockNumber -= c.cf.Chain.GetOffsetBlock()
 
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
@@ -157,7 +163,7 @@ func (c *Chain) queryAndVerify(ctx context.Context) {
 
 // Batch verify results and post them on-chain
 func (c *Chain) batchPost(ctx context.Context) {
-	batchVerifyResultTicker := time.NewTicker(1 * time.Second)
+	batchVerifyResultTicker := time.NewTicker(10 * time.Second)
 	resultList := make([]verifyResult, 0)
 
 	for {
@@ -177,7 +183,7 @@ func (c *Chain) batchPost(ctx context.Context) {
 
 			resultList = make([]verifyResult, 0)
 		case <-c.stopChan:
-			c.logger.WithContext(ctx).Infof("chain batchPost [%s] stopping", c.cf.Chain.ChainName)
+			c.logger.WithContext(ctx).Infof("chain [%s] batchPost stopping", c.cf.Chain.ChainName)
 			return
 		}
 	}
@@ -188,16 +194,22 @@ func (c *Chain) monitorErrors(ctx context.Context) {
 	for {
 		select {
 		case err := <-c.errChan:
+			for _, nonRetriableErr := range nonRetriableErrors {
+				// Switch from error.Is to message-based checking for enhanced flexibility.
+				if errorContainsMessage(nonRetriableErr, err) {
+					// TODO: Implement graceful shutdown handling.
+					panic(err.Error())
+				}
+			}
 			c.logger.WithContext(ctx).Errorf("mointor error: %s", err.Error())
 		case <-c.stopChan:
-			c.logger.WithContext(ctx).Infof("chain batchPost [%s] stopping", c.cf.Chain.ChainName)
+			c.logger.WithContext(ctx).Infof("chain [%s] batchPost stopping", c.cf.Chain.ChainName)
 			return
 		}
 	}
 }
 
 func (c *Chain) SendAttestationTrx(ctx context.Context, attestationIds [][32]byte, results []bool) (string, error) {
-
 	nonce, err := c.ethClient.PendingNonceAt(ctx, c.verifierAddress)
 	if err != nil {
 		return "", errors.Wrap(err, "eth client get Nonce error")
@@ -281,7 +293,6 @@ func (c *Chain) queryChain(ctx context.Context) error {
 			TeeAddress:         unpackedData.TeeAddress,
 			CampaignId:         unpackedData.CampaignId,
 			AttestationIdBytes: unpackedData.AttestationId,
-			AttestationIdStr:   hex.EncodeToString(unpackedData.AttestationId[:]),
 			Attestation:        unpackedData.Attestation,
 		}
 
@@ -305,7 +316,12 @@ func (c *Chain) queryChain(ctx context.Context) error {
 		c.logger.WithContext(ctx).Infof("logInfo: %+v", logInfo)
 	}
 
-	c.logger.WithContext(ctx).Infof("start block %d, end block %d", startBlockNumber, endBlockNumber)
+	c.logger.WithContext(ctx).Infof(
+		"chain [%s] query: start block %d, end block %d",
+		c.cf.Chain.ChainName,
+		startBlockNumber,
+		endBlockNumber,
+	)
 	c.latestBlockNumber = int64(endBlockNumber) + 1
 
 	return nil
@@ -321,7 +337,7 @@ func (c *Chain) sendBatchResult(ctx context.Context, resultList []verifyResult) 
 	}
 	_, err := c.SendAttestationTrx(ctx, attestationIds, verifyResults)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "chain [%s] send batch tx failed", c.cf.Chain.ChainName)
 	}
 
 	return nil
