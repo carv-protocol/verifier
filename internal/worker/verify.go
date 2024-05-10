@@ -83,5 +83,4 @@ func verifyAttestation(c *Chain, bytesStr string) (bool, error) {
 	}
 
 	return true, nil
-
 }
