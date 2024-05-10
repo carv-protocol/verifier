@@ -286,14 +286,12 @@ func (c *Chain) queryChain(ctx context.Context) error {
 		}
 
 		logInfo := LogInfo{
-			BlockNumber:        cLog.BlockNumber,
-			ContractAddress:    cLog.Address,
-			TxHash:             cLog.TxHash,
-			TxIndex:            unpackedData.Raw.TxIndex,
-			TeeAddress:         unpackedData.TeeAddress,
-			CampaignId:         unpackedData.CampaignId,
-			AttestationIdBytes: unpackedData.AttestationId,
-			Attestation:        unpackedData.Attestation,
+			BlockNumber:     cLog.BlockNumber,
+			ContractAddress: cLog.Address,
+			TxHash:          cLog.TxHash,
+			TxIndex:         unpackedData.Raw.TxIndex,
+			TeeAddress:      unpackedData.TeeAddress,
+			CampaignId:      unpackedData.CampaignId,
 		}
 
 		// Verify attestation
