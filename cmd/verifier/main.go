@@ -70,6 +70,11 @@ func main() {
 		return
 	}
 
+	// By default use local path, easier for executable file
+	if flagVar.Conf == "" {
+		flagVar.Conf = "config_local.yaml"
+	}
+
 	c := config.New(
 		config.WithSource(
 			file.NewSource(flagVar.Conf),
