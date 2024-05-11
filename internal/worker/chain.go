@@ -101,8 +101,11 @@ func NewChain(
 }
 
 func (c *Chain) Start(ctx context.Context) error {
-	c.latestBlockNumber = c.cf.Chain.GetStartBlock()
-
+	blockFromChain, err := c.GetVerifierBlock(c.verifierAddress)
+	if err != nil {
+		return errors.Wrapf(err, "chain [%s] get verifier block error", c.cf.Chain.ChainName)
+	}
+	c.latestBlockNumber = int64(blockFromChain)
 	// Retrieve the latest block number if it has not been specified
 	if c.latestBlockNumber == 0 {
 		blockNumber, err := c.ethClient.BlockNumber(ctx)
@@ -339,4 +342,15 @@ func (c *Chain) sendBatchResult(ctx context.Context, resultList []verifyResult) 
 	}
 
 	return nil
+}
+
+func (c *Chain) GetVerifierBlock(verifierAddress common.Address) (uint64, error) {
+
+	block, err := c.contractObj.VerifierBlock(&bind.CallOpts{}, verifierAddress)
+	if err != nil {
+		return 0, err
+	}
+
+	return block.Uint64(), nil
+
 }
