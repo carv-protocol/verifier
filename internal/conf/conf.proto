@@ -20,7 +20,6 @@ message Bootstrap {
   Chain chain = 4;
   Contract contract = 5;
   Wallet wallet = 6;
-  Dacp dacp = 7;
 }
 
 message Server {
@@ -76,10 +75,4 @@ message Wallet {
   string private_key = 2;
   string keystore_path = 3;
   string keystore_password = 4;
-}
-
-message Dacp {
-  string identity_path = 1;
-  string tcb_path = 2;
-  string trusted_path = 3;
 }

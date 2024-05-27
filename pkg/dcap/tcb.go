@@ -4,7 +4,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/carv-protocol/verifier/internal/common"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -42,7 +45,7 @@ var tcbInfo struct {
 func (e *TcbInfo) GetTcbInfo(path string) *TcbInfo {
 	tcbInfo.Do(func() {
 		var err error
-		tcbInfoInstance, err := loadTcbInfo(path)
+		tcbInfoInstance, err := loadTcbInfoFromUrl(common.BASE_URl + path)
 		if err != nil {
 			log.Fatalf("Failed to load TCB Info: %v", err)
 		}
@@ -57,6 +60,70 @@ func loadTcbInfo(filePath string) (*TcbInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	var root struct {
+		TcbInfo struct {
+			Version                 uint8  `json:"version"`
+			IssueDate               string `json:"issueDate"`
+			NextUpdate              string `json:"nextUpdate"`
+			Fmspc                   string `json:"fmspc"`
+			PceID                   string `json:"pceId"`
+			TcbType                 uint8  `json:"tcbType"`
+			TcbEvaluationDataNumber uint8  `json:"tcbEvaluationDataNumber"`
+			TcbLevels               []struct {
+				Tcb struct {
+					SgxtcbcompSvn map[string]uint8 `json:""`
+					Pcesvn        uint16           `json:"pcesvn"`
+				} `json:"tcb"`
+				TcbDate   string `json:"tcbDate"`
+				TcbStatus string `json:"tcbStatus"`
+			} `json:"tcbLevels"`
+		} `json:"tcbInfo"`
+	}
+
+	if err := json.Unmarshal(data, &root); err != nil {
+		return nil, err
+	}
+
+	tcbInfo := &TcbInfo{
+		Version:                 root.TcbInfo.Version,
+		IssueDate:               parseTime(root.TcbInfo.IssueDate),
+		NextUpdate:              parseTime(root.TcbInfo.NextUpdate),
+		Fmspc:                   decodeHex(root.TcbInfo.Fmspc),
+		PceID:                   decodeHex(root.TcbInfo.PceID),
+		TcbType:                 root.TcbInfo.TcbType,
+		TcbEvaluationDataNumber: root.TcbInfo.TcbEvaluationDataNumber,
+	}
+
+	for _, level := range root.TcbInfo.TcbLevels {
+		var compSvn [16]uint8
+
+		for i := 0; i < 16; i++ {
+			key := fmt.Sprintf("sgxtcbcomp%02dsvn", i+1)
+			if val, ok := level.Tcb.SgxtcbcompSvn[key]; ok {
+				compSvn[i] = uint8(val)
+			}
+		}
+		tcbInfo.TcbLevels = append(tcbInfo.TcbLevels, TcbLevelInfo{
+			Tcb: Tcb{
+				SgxtcbcompSvn: compSvn,
+				Pcesvn:        level.Tcb.Pcesvn,
+			},
+			TcbDate:   parseTime(level.TcbDate),
+			TcbStatus: level.TcbStatus,
+		})
+	}
+
+	return tcbInfo, nil
+}
+
+func loadTcbInfoFromUrl(url string) (*TcbInfo, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
 
 	var root struct {
 		TcbInfo struct {
