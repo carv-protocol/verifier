@@ -6,7 +6,9 @@ require (
 	github.com/ethereum/go-ethereum v1.13.14
 	github.com/go-kratos/kratos/v2 v2.7.2
 	github.com/google/wire v0.6.0
+	github.com/gorilla/mux v1.8.0
 	github.com/gozelus/gormotel v0.5.0
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.0
 	github.com/samber/lo v1.39.0
@@ -61,9 +63,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
-	github.com/google/subcommands v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/graph-gophers/graphql-go v1.3.0 // indirect
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
@@ -93,8 +93,6 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7 // indirect
-	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.1-0.20210607210712-147c58e9608a // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
@@ -125,7 +123,7 @@ require (
 	golang.org/x/tools v0.17.0 // indirect
 	google.golang.org/genproto v0.0.0-20230629202037-9506855d4529 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230629202037-9506855d4529 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/datatypes v1.1.1-0.20230130040222-c43177d3cf8c // indirect

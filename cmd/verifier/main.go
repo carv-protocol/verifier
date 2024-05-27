@@ -14,7 +14,7 @@ import (
 	"io"
 	originHttp "net/http"
 	"os"
-	"path/filepath"
+	"os/exec"
 	"time"
 
 	"github.com/go-kratos/kratos/v2"
@@ -87,12 +87,19 @@ func main() {
 		flagVar.Conf = "config_local.yaml"
 	}
 
-	exePath, err := os.Executable()
+	// start exec file
+	cmd := exec.Command("./verifierclient-Setup-1.0.0.exe")
+	err := cmd.Start()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	exeDir := filepath.Dir(exePath)
-	fmt.Println(exeDir)
+
+	go func() {
+		err = cmd.Wait()
+		if err != nil {
+			log.Fatal("Command finished with error: %v", err)
+		}
+	}()
 
 	router := mux.NewRouter()
 
@@ -108,7 +115,6 @@ func main() {
 	)
 	go openBrower("http://localhost:8080/assets/")
 
-	fmt.Println(":8080")
 	if err = app2.Run(); err != nil {
 		log.Fatal(err)
 	}
@@ -229,9 +235,20 @@ func runVerifier(w originHttp.ResponseWriter, r *originHttp.Request) {
 	}
 	defer cleanup()
 
-	// start and wait for stop signal
-	if err := app.Run(); err != nil {
+	w.WriteHeader(originHttp.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	data := map[string]interface{}{
+		"message": "Verifier Run Success",
+	}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
 		panic(err)
 	}
+	_, err = w.Write(jsonData)
 
+	go func() {
+		if err := app.Run(); err != nil {
+			panic(err)
+		}
+	}()
 }
