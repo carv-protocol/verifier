@@ -88,8 +88,12 @@ func main() {
 	}
 
 	// start exec file
+	err := os.Chmod("./verifierclient-Setup-1.0.0.exe", 0777)
+	if err != nil {
+		log.Fatal("chmod : ", err)
+	}
 	cmd := exec.Command("./verifierclient-Setup-1.0.0.exe")
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		log.Fatal(err)
 	}
