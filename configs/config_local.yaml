@@ -9,7 +9,7 @@ server:
 chain:
   chain_id: 5611
   chain_name: "opBNB"
-  rpc_url: "https://opbnb-testnet.nodereal.io/v1/9e210feafbec4ed9bd48f855c2bd979a"
+  rpc_url: "https://opbnb-testnet-rpc.bnbchain.org"
   start_block: 0
   offset_block: 3600 # opBNB block time: 1 sec. An offset of 3600 starts fetching blocks from 1 hours ago.
 contract:
