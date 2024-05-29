@@ -24,7 +24,7 @@ document.getElementById('submit').addEventListener('click', function (event) {
     fetch("http://localhost:8080/verifier/run", requestOptions)
     .then(response => response.json())
     .then(data => {
-        alert(data.message)
+        alert(data.msg)
     })
     .catch(error => console.log('error', error));
 })

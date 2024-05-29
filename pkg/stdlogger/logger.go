@@ -6,6 +6,7 @@ import (
 	"fmt"
 	klog "github.com/go-kratos/kratos/v2/log"
 	"github.com/samber/lo"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"log"
 	"sync"
@@ -27,7 +28,13 @@ func NewStdLogger(w io.Writer, levels ...klog.Level) klog.Logger {
 	}
 	return &stdLogger{
 		levels: levels,
-		log:    log.New(w, "", 0),
+		log: log.New(&lumberjack.Logger{
+			Filename:   "logs/log.txt",
+			MaxSize:    1, // megabytes
+			MaxBackups: 3,
+			MaxAge:     28, // days
+			Compress:   false,
+		}, "", 0),
 		pool: &sync.Pool{
 			New: func() interface{} {
 				return new(bytes.Buffer)
