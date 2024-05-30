@@ -1,0 +1,27 @@
+env: ENV_PROD
+server:
+  http:
+    addr: 0.0.0.0:8000
+    timeout: 1s
+  grpc:
+    addr: 0.0.0.0:9000
+    timeout: 1s
+chain:
+  chain_id: 5611
+  chain_name: "opBNB"
+  rpc_url: "https://opbnb-testnet.nodereal.io/v1/9e210feafbec4ed9bd48f855c2bd979a"
+  start_block: 0
+  offset_block: 3600 # opBNB block time: 1 sec. An offset of 3600 starts fetching blocks from 1 hours ago.
+contract:
+  addr: "0xbd9a9ac0172f9eddebea4172fb7d9a3ca95cee52"
+  tee_addr : "0x7f57004E08ef1702b2b88b87ae01a561ae10F10e"
+  topic: "0x99a038e9d345d0b12130b3b1fb003bf8f2d3a5c27ce2a800bbb1608efff6c591"
+wallet:
+  mode: 0
+  private_key: ""
+  keystore_path: ""
+  keystore_password: ""
+dacp:
+  identity_path: "/data/conf/identity.json"
+  tcb_path: "/data/conf/tcb.json"
+  trusted_path: "/data/conf/trusted.json"

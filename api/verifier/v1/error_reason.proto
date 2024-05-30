@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package verifier.v1;
+
+option go_package = "github.com/carv-protocol/verifier/api/verifier/v1;v1";
+
+enum ErrorReason {
+  VERIFIER_UNSPECIFIED = 0;
+  USER_NOT_FOUND = 1;
+}
