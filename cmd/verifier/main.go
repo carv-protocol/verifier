@@ -1,81 +1,84 @@
 package main
 
 import (
-	"flag"
 	"fmt"
-	"github.com/gorilla/mux"
-	"github.com/pkg/browser"
-	originHttp "net/http"
-	"os"
-	"os/exec"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
+	"log"
 	"time"
 
-	"github.com/go-kratos/kratos/v2"
-	"github.com/go-kratos/kratos/v2/log"
-	"github.com/go-kratos/kratos/v2/transport/http"
 	_ "go.uber.org/automaxprocs"
-
-	"github.com/carv-protocol/verifier/internal/key_manager"
 )
 
 // go build -ldflags "-X main.Version=x.y.z"
 
 func main() {
-	flag.Parse()
 
-	if flagVar.GenerateKeystore {
-		key_manager.GenerateKeystore(flagVar.KeystorePath)
-		return
-	}
+	a := app.New()
+	myWindow := a.NewWindow("VerifierClient")
+	myCanvas := myWindow.Canvas()
 
-	// By default use local path, easier for executable file
-	if flagVar.Conf == "" {
-		flagVar.Conf = "config_local.yaml"
-	}
-
-	// start exec file
-	err := os.Chmod("./verifierclient-Setup-1.0.0.exe", 0777)
-	if err != nil {
-		log.Fatal("chmod : ", err)
-	}
-	cmd := exec.Command("./verifierclient-Setup-1.0.0.exe")
-	err = cmd.Start()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	go func() {
-		err = cmd.Wait()
-		if err != nil {
-			log.Fatal("Command finished with error: %v", err)
-		}
-	}()
-
-	router := mux.NewRouter()
-
-	router.PathPrefix("/assets/").Handler(originHttp.FileServer(originHttp.FS(f)))
-	router.HandleFunc("/verifier/run", runVerifier).Methods("POST")
-	router.HandleFunc("/verifier/logs", getSystemLogs).Methods("GET")
-	router.HandleFunc("/verifier/active", checkVerifierIsActive).Methods("GET")
-
-	httpSrv := http.NewServer(http.Address(":8080"))
-	httpSrv.HandlePrefix("/", router)
-
-	app2 := kratos.New(
-		kratos.Name("static"),
-		kratos.Server(httpSrv),
+	toolbar := widget.NewToolbar(
+		widget.NewToolbarAction(theme.HelpIcon(), func() {
+			log.Println("Display help")
+			dialog.ShowInformation("Help", "This is a simple verifier client", myWindow)
+		}),
 	)
-	//go openBrower("http://localhost:8080/assets/")
 
-	if err := app2.Run(); err != nil {
-		log.Fatal(err)
+	Title := widget.NewLabel("Welcome To Use Verifier Client")
+	TitleCss(Title)
+	// form
+	RpcUrl := widget.NewEntry()
+	RpcUrl.SetPlaceHolder("https://opbnb-testnet-rpc.bnbchain.org")
+	PrivateKey := widget.NewEntry()
+
+	form := &widget.Form{
+		Items: []*widget.FormItem{
+			{Text: "Entry", Widget: RpcUrl},
+			{Text: "test", Widget: PrivateKey},
+		},
+		OnSubmit: func() {
+			if RpcUrl.Text == "" {
+				//runVerifier(RpcUrl.Text, PrivateKey.Text)
+				go runVerifier(RpcUrl.PlaceHolder, PrivateKey.Text)
+			} else {
+				go runVerifier(RpcUrl.Text, PrivateKey.Text)
+			}
+
+			time.Sleep(5 * time.Second)
+			data := checkVerifierIsActive()
+			if data.Code == 200 {
+				dialog.ShowInformation("Verifier Running", data.Msg, myWindow)
+			}
+		},
 	}
+
+	status := widget.NewLabel("Status")
+	go showStatus(status)
+
+	myCanvas.SetContent(container.NewVBox(toolbar, Title, form, status))
+	myWindow.Resize(fyne.NewSize(600, 400))
+
+	myWindow.ShowAndRun()
+	myWindow.Close()
+}
+
+func TitleCss(title *widget.Label) {
+	title.TextStyle = fyne.TextStyle{Bold: true, Italic: true}
+	title.Alignment = fyne.TextAlignCenter
 
 }
 
-func openBrowner(url string) {
-	time.Sleep(100 * time.Millisecond)
-	if err := browser.OpenURL(url); err != nil {
-		fmt.Println("open browser error", err)
+func showStatus(statusLabel *widget.Label) {
+	statusLabel.TextStyle = fyne.TextStyle{Bold: true, Italic: true}
+	for {
+		time.Sleep(2 * time.Second)
+		data := checkVerifierIsActive()
+		fmt.Println(data.Msg)
+		statusLabel.SetText(data.Msg)
 	}
 }

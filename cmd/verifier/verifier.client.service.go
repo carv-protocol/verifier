@@ -82,15 +82,13 @@ type Response struct {
 	Msg    string `json:"msg"`
 }
 
-func runVerifier(w originHttp.ResponseWriter, r *originHttp.Request) {
-	var setting Setting
+func runVerifier(rpcUrl, privateKey string) {
+	fmt.Println(rpcUrl, privateKey)
+	flag.Parse()
 
-	err := json.NewDecoder(r.Body).Decode(&setting)
-	if err != nil {
-		originHttp.Error(w, err.Error(), originHttp.StatusBadRequest)
-		return
+	if flagVar.GenerateKeystore {
+		key_manager.GenerateKeystore(flagVar.KeystorePath)
 	}
-	fmt.Printf("setting: %+v\n", setting)
 
 	tempFile, tempFileErr := fetchConfigFromURL(common.BASE_URl + "config_local.yaml")
 	if tempFileErr != nil {
@@ -122,9 +120,9 @@ func runVerifier(w originHttp.ResponseWriter, r *originHttp.Request) {
 	}
 
 	// update rpc and privateKey
-	bc.Chain.RpcUrl = setting.RpcUrl
+	bc.Chain.RpcUrl = rpcUrl
 	bc.Wallet.Mode = 1
-	bc.Wallet.PrivateKey = setting.PrivateKey
+	bc.Wallet.PrivateKey = privateKey
 
 	logFormat := log.With(stdlogger.NewStdLogger(os.Stdout, logLevels...),
 		"ts", log.DefaultTimestamp,
@@ -138,22 +136,7 @@ func runVerifier(w originHttp.ResponseWriter, r *originHttp.Request) {
 	logger := log.NewHelper(logFormat)
 
 	if err := key_manager.NewKeyManager(bc.Wallet, flagVar.PrivateKey, flagVar.KeystorePath, flagVar.KeystorePassword); err != nil {
-		w.WriteHeader(originHttp.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		data := &Response{
-			Code:   500,
-			Result: "",
-			Msg:    "Verifier Run Failed",
-		}
-		jsonData, err := json.Marshal(data)
-		if err != nil {
-			panic(err)
-		}
-		_, err = w.Write(jsonData)
-		if err != nil {
-			return
-		}
-		return
+		panic(err)
 	}
 
 	app, cleanup, err := wireApp(&bc, logFormat, logger)
@@ -162,24 +145,9 @@ func runVerifier(w originHttp.ResponseWriter, r *originHttp.Request) {
 	}
 	defer cleanup()
 
-	w.WriteHeader(originHttp.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	data := &Response{
-		Code:   200,
-		Result: "",
-		Msg:    "Verifier Run Success",
-	}
-	jsonData, err := json.Marshal(data)
-	if err != nil {
+	if err := app.Run(); err != nil {
 		panic(err)
 	}
-	_, err = w.Write(jsonData)
-
-	go func() {
-		if err := app.Run(); err != nil {
-			panic(err)
-		}
-	}()
 }
 
 // Get System log from logs file
@@ -233,41 +201,24 @@ func getSystemLogs(w originHttp.ResponseWriter, r *originHttp.Request) {
 	_, err = w.Write(data)
 }
 
-func checkVerifierIsActive(w originHttp.ResponseWriter, r *originHttp.Request) {
+func checkVerifierIsActive() *Response {
 	verifierRes, err := originHttp.Get("http://127.0.0.1:8000/verifier/helloworld")
 	if err != nil {
-		w.WriteHeader(originHttp.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
 		data := &Response{
 			Code:   500,
 			Result: "",
 			Msg:    "Verifier is not Active",
 		}
-		jsonData, err := json.Marshal(data)
-		if err != nil {
-			panic(err)
-		}
-		_, err = w.Write(jsonData)
-		if err != nil {
-			return
-		}
-		return
+		return data
 	}
 	defer verifierRes.Body.Close()
 
-	w.WriteHeader(originHttp.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
 	respData := &Response{
 		Code:   200,
 		Result: "",
 		Msg:    "Verifier is Active",
 	}
-	jsonData, err := json.Marshal(respData)
-	if err != nil {
-		panic(err)
-
-	}
-	_, err = w.Write(jsonData)
+	return respData
 
 }
 func fetchConfigFromURL(url string) (string, error) {
