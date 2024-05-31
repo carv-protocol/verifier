@@ -2,9 +2,10 @@ package main
 
 import (
 	"embed"
-	"encoding/json"
 	"flag"
 	"fmt"
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/dialog"
 	"github.com/carv-protocol/verifier/internal/common"
 	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/internal/key_manager"
@@ -82,8 +83,7 @@ type Response struct {
 	Msg    string `json:"msg"`
 }
 
-func runVerifier(rpcUrl, privateKey string) {
-	fmt.Println(rpcUrl, privateKey)
+func runVerifier(rpcUrl, privateKey string, w fyne.Window) error {
 	flag.Parse()
 
 	if flagVar.GenerateKeystore {
@@ -92,7 +92,8 @@ func runVerifier(rpcUrl, privateKey string) {
 
 	tempFile, tempFileErr := fetchConfigFromURL(common.BASE_URl + "config_local.yaml")
 	if tempFileErr != nil {
-		panic(tempFileErr)
+		dialog.ShowError(tempFileErr, w)
+		return tempFileErr
 	}
 	c := config.New(
 		config.WithSource(
@@ -102,11 +103,13 @@ func runVerifier(rpcUrl, privateKey string) {
 	defer c.Close()
 
 	if err := c.Load(); err != nil {
-		panic(err)
+		dialog.ShowError(err, w)
+		return err
 	}
 	var bc conf.Bootstrap
 	if err := c.Scan(&bc); err != nil {
-		panic(err)
+		dialog.ShowError(err, w)
+		return err
 	}
 
 	logLevels := []log.Level{
@@ -136,23 +139,27 @@ func runVerifier(rpcUrl, privateKey string) {
 	logger := log.NewHelper(logFormat)
 
 	if err := key_manager.NewKeyManager(bc.Wallet, flagVar.PrivateKey, flagVar.KeystorePath, flagVar.KeystorePassword); err != nil {
-		panic(err)
+		dialog.ShowError(err, w)
+		return err
 	}
 
 	app, cleanup, err := wireApp(&bc, logFormat, logger)
 	if err != nil {
-		panic(err)
+		dialog.ShowError(err, w)
+		return err
 	}
 	defer cleanup()
 
 	if err := app.Run(); err != nil {
-		panic(err)
+		dialog.ShowError(err, w)
+		return err
 	}
+	return nil
 }
 
 // Get System log from logs file
 
-func getSystemLogs(w originHttp.ResponseWriter, r *originHttp.Request) {
+func getSystemLogs() *Response {
 	// get log direction file
 	files, err := os.ReadDir("logs")
 	if err != nil {
@@ -168,22 +175,12 @@ func getSystemLogs(w originHttp.ResponseWriter, r *originHttp.Request) {
 		return timeI.ModTime().After(timeJ.ModTime())
 	})
 	if len(files) == 0 {
-		w.WriteHeader(originHttp.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
 		data := &Response{
 			Code:   200,
 			Result: "",
 			Msg:    "No logs found",
 		}
-		jsonData, err := json.Marshal(data)
-		if err != nil {
-			panic(err)
-		}
-		_, err = w.Write(jsonData)
-		if err != nil {
-			return
-		}
-		return
+		return data
 	}
 	logFile, err := os.Open("logs/" + files[0].Name())
 	if err != nil {
@@ -196,9 +193,14 @@ func getSystemLogs(w originHttp.ResponseWriter, r *originHttp.Request) {
 		panic(err)
 
 	}
-	w.WriteHeader(originHttp.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(data)
+
+	respData := &Response{
+		Code:   200,
+		Result: string(data),
+		Msg:    "Logs found",
+	}
+
+	return respData
 }
 
 func checkVerifierIsActive() *Response {
