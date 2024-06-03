@@ -1,7 +1,6 @@
 package main
 
 import (
-	"embed"
 	"flag"
 	"fmt"
 	"fyne.io/fyne/v2"
@@ -42,8 +41,6 @@ var (
 	flagVar FlagVar
 
 	id, _ = os.Hostname()
-	//go:embed assets/*
-	f embed.FS
 )
 
 func init() {

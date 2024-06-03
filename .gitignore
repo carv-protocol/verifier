@@ -41,3 +41,6 @@ logs
 internal/scripts
 *_test.go
 configs/config-test.yaml
+# fyne-cross setting
+fyne-cross
+Icon.png
