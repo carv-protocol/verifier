@@ -18,10 +18,14 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware/tracing"
 	"github.com/go-kratos/kratos/v2/transport/grpc"
 	"github.com/go-kratos/kratos/v2/transport/http"
+	"github.com/shirou/gopsutil/cpu"
 	"io"
 	originHttp "net/http"
 	"os"
+	"runtime"
 	"sort"
+	"strconv"
+	"time"
 )
 
 type FlagVar struct {
@@ -64,14 +68,6 @@ func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server, workerServer *w
 			workerServer,
 		),
 	)
-}
-
-type VerifierClientService interface {
-}
-
-type Setting struct {
-	RpcUrl     string `json:"rpcUrl"`
-	PrivateKey string `json:"privateKey"`
 }
 
 type Response struct {
@@ -219,6 +215,33 @@ func checkVerifierIsActive() *Response {
 	}
 	return respData
 
+}
+
+// get System information
+func getSystemInformation(sys *coloredLabel, allocText *coloredLabel, totalAlloc *coloredLabel, cpuUsage *coloredLabel) {
+	go func() {
+		for {
+			time.Sleep(2 * time.Second)
+			var memStats runtime.MemStats
+			runtime.ReadMemStats(&memStats)
+
+			sys.Text = "System Information: " + runtime.GOOS + " " + runtime.GOARCH + " " + strconv.Itoa(runtime.NumCPU()) + " CPU(s)"
+			sys.Refresh()
+
+			allocMB := float64(memStats.Alloc) / 1024 / 1024
+			allocText.Text = "Allocated memory: " + strconv.FormatFloat(allocMB, 'f', 2, 64) + " MB"
+			allocText.Refresh()
+
+			totalAllocMB := float64(memStats.TotalAlloc) / 1024 / 1024
+			totalAlloc.Text = "Total Allocated memory: " + strconv.FormatFloat(totalAllocMB, 'f', 2, 64) + " MB"
+			totalAlloc.Refresh()
+
+			cpuPersent, _ := cpu.Percent(time.Second, false)
+			cpuUsage.Text = "CPU Usage: " + strconv.FormatFloat(cpuPersent[0], 'f', 2, 64) + "%"
+			cpuUsage.Refresh()
+		}
+
+	}()
 }
 func fetchConfigFromURL(url string) (string, error) {
 	resp, err := originHttp.Get(url)

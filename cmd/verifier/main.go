@@ -17,10 +17,11 @@ import (
 
 // go build -ldflags "-X main.Version=x.y.z"
 func main() {
-
+	// information channel
+	stopGetLogsChan := make(chan bool)
 	a := app.NewWithID("com.verifier.client")
 	myWindow := a.NewWindow("VerifierClient")
-	myWindow.SetMainMenu(makeMenu(a, myWindow))
+	myWindow.SetMainMenu(makeMenu(a, myWindow, stopGetLogsChan))
 	myWindow.SetMaster()
 
 	Title := widget.NewLabel("Welcome To Use Verifier Client")
@@ -30,20 +31,44 @@ func main() {
 	status := newColoredLabel("InActive", color.RGBA{255, 0, 0, 255})
 	go showStatus(status)
 
-	//
-	content := container.NewBorder(container.NewHBox(layout.NewSpacer(), Title, layout.NewSpacer()), container.NewHBox(layout.NewSpacer(), status), nil, nil)
+	// left
+	leftRectangle := canvas.NewRectangle(nil)
+	leftRectangle.SetMinSize(fyne.NewSize(400, 600))
+	sysText := newColoredLabel("System", color.RGBA{0, 200, 0, 255})
+	allocMemoryText := newColoredLabel("Allocated Memory: 0.0", color.RGBA{255, 0, 0, 255})
+	totalMemoryText := newColoredLabel("Total Memory: 0.0", color.RGBA{0, 255, 0, 255})
+	cpuInfText := newColoredLabel("CPU: 0.0", color.RGBA{0, 100, 100, 100})
+
+	leftVBox := container.NewVBox(sysText, allocMemoryText, totalMemoryText, cpuInfText)
+	leftContent := container.NewCenter(leftRectangle, leftVBox)
+	go getSystemInformation(sysText, allocMemoryText, totalMemoryText, cpuInfText)
+
+	rect := canvas.NewRectangle(nil)
+	rect.SetMinSize(fyne.NewSize(800, 40))
+	topHBox := container.NewHBox(Title)
+	topContent := container.NewCenter(rect, topHBox)
+
+	//right
+	image := canvas.NewImageFromFile("/Users/shanshanramondy/Documents/golang/verifier/cmd/verifier/fyne.png")
+	image.FillMode = canvas.ImageFillContain
+	image.SetMinSize(fyne.NewSize(400, 600))
+	rightRectangle := canvas.NewRectangle(color.RGBA{0, 0, 255, 255})
+	rightRectangle.Resize(fyne.NewSize(400, 600))
+	rightVBox := container.NewVBox(image)
+	rightContent := container.NewCenter(rightRectangle, rightVBox)
+
+	content := container.NewBorder(topContent, container.NewHBox(layout.NewSpacer(), status), leftContent, rightContent, nil)
 
 	content.Resize(fyne.NewSize(800, 600))
 	myWindow.SetContent(content)
 	myWindow.Resize(fyne.NewSize(800, 600))
 
 	myWindow.ShowAndRun()
-	myWindow.Close()
 }
 
-func makeMenu(a fyne.App, w fyne.Window) *fyne.MainMenu {
+func makeMenu(a fyne.App, w fyne.Window, stopChan chan bool) *fyne.MainMenu {
 	fileMenu := fyne.NewMenu("Run",
-		fyne.NewMenuItem("start", func() {
+		fyne.NewMenuItem("Start", func() {
 			newWindow := a.NewWindow("RunNode")
 			// form
 			RpcUrl := widget.NewEntry()
@@ -57,12 +82,22 @@ func makeMenu(a fyne.App, w fyne.Window) *fyne.MainMenu {
 				OnSubmit: func() {
 					if RpcUrl.Text == "" {
 						//runVerifier(RpcUrl.Text, PrivateKey.Text)
-						go runVerifier(RpcUrl.PlaceHolder, PrivateKey.Text, newWindow)
+						go func() {
+							err := runVerifier(RpcUrl.PlaceHolder, PrivateKey.Text, newWindow)
+							if err != nil {
+								dialog.ShowError(err, newWindow)
+							}
+						}()
 					} else {
-						go runVerifier(RpcUrl.Text, PrivateKey.Text, newWindow)
+						go func() {
+							err := runVerifier(RpcUrl.Text, PrivateKey.Text, newWindow)
+							if err != nil {
+								dialog.ShowError(err, newWindow)
+							}
+						}()
 					}
 
-					time.Sleep(5 * time.Second)
+					time.Sleep(2 * time.Second)
 					data := checkVerifierIsActive()
 					if data.Code == 200 {
 						dialog.ShowInformation("Verifier Running", data.Msg, newWindow)
@@ -84,11 +119,14 @@ func makeMenu(a fyne.App, w fyne.Window) *fyne.MainMenu {
 			newWindow := a.NewWindow("LogWindow")
 			logsTextArea := widget.NewMultiLineEntry()
 			setTextArea(logsTextArea)
-			go showLogs(logsTextArea)
+			go showLogs(logsTextArea, stopChan)
 			newWindow.Resize(fyne.NewSize(600, 400))
 			logsTextArea.Resize(fyne.NewSize(600, 400))
 			newWindow.SetContent(logsTextArea)
 			newWindow.Show()
+			newWindow.SetOnClosed(func() {
+				stopChan <- true
+			})
 		}),
 	)
 	//windowMenu := fyne.NewMenu("Windows")
@@ -101,9 +139,8 @@ func makeMenu(a fyne.App, w fyne.Window) *fyne.MainMenu {
 }
 
 func TitleCss(title *widget.Label) {
-	title.TextStyle = fyne.TextStyle{Bold: true, Italic: true}
+	title.TextStyle = fyne.TextStyle{Bold: true, Italic: true, Monospace: true}
 	title.Alignment = fyne.TextAlignCenter
-
 }
 
 func setTextArea(textArea *widget.Entry) {
@@ -114,7 +151,6 @@ func showStatus(statusLabel *coloredLabel) {
 	for {
 		time.Sleep(2 * time.Second)
 		data := checkVerifierIsActive()
-		fmt.Println(data.Msg)
 		if data.Code == 200 {
 			statusLabel.Text = "Active"
 			statusLabel.Color = color.RGBA{0, 255, 0, 255}
@@ -126,11 +162,19 @@ func showStatus(statusLabel *coloredLabel) {
 	}
 }
 
-func showLogs(textArea *widget.Entry) {
-	textArea.SetText("")
-	logsData := getSystemLogs()
-	textArea.SetText(logsData.Result)
+func showLogs(textArea *widget.Entry, stopChan <-chan bool) {
+	for {
+		select {
+		case <-stopChan:
+			return
+		default:
+			time.Sleep(2 * time.Second)
+			textArea.SetText("")
+			logsData := getSystemLogs()
+			textArea.SetText(logsData.Result)
+		}
 
+	}
 }
 
 // canvas text extension
