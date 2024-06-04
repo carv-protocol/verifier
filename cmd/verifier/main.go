@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/carv-protocol/verifier/data"
 	"image/color"
 	"time"
 
@@ -49,7 +50,7 @@ func main() {
 	topContent := container.NewCenter(rect, topHBox)
 
 	//right
-	image := canvas.NewImageFromFile("/Users/shanshanramondy/Documents/golang/verifier/cmd/verifier/fyne.png")
+	image := canvas.NewImageFromResource(data.FyneLogoTransparent)
 	image.FillMode = canvas.ImageFillContain
 	image.SetMinSize(fyne.NewSize(400, 600))
 	rightRectangle := canvas.NewRectangle(color.RGBA{0, 0, 255, 255})
