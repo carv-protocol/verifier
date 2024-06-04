@@ -154,6 +154,16 @@ func runVerifier(rpcUrl, privateKey string, w fyne.Window) error {
 
 func getSystemLogs() *Response {
 	// get log direction file
+	_, err := os.Stat("logs")
+	if os.IsNotExist(err) {
+		data := &Response{
+			Code:   200,
+			Result: "",
+			Msg:    "No logs found",
+		}
+		return data
+
+	}
 	files, err := os.ReadDir("logs")
 	if err != nil {
 		panic(err)
