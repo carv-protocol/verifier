@@ -314,7 +314,7 @@ func (c *Chain) queryChain(ctx context.Context) error {
 			result:        result,
 		}
 
-		c.logger.WithContext(ctx).Infof("logInfo: %+v", logInfo)
+		c.logger.WithContext(ctx).Infof("%+v", logInfo)
 	}
 
 	c.logger.WithContext(ctx).Infof(

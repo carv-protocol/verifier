@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
+	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
-	"fyne.io/fyne/v2"
+	fyneV2 "fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
 	"github.com/carv-protocol/verifier/internal/common"
 	"github.com/carv-protocol/verifier/internal/conf"
@@ -11,7 +14,9 @@ import (
 	"github.com/carv-protocol/verifier/internal/worker"
 	"github.com/carv-protocol/verifier/pkg/stdlogger"
 	"github.com/djherbis/times"
-	"github.com/go-kratos/kratos/v2"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/fsnotify/fsnotify"
+	kratosV2 "github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/config"
 	"github.com/go-kratos/kratos/v2/config/file"
 	"github.com/go-kratos/kratos/v2/log"
@@ -25,7 +30,12 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
+)
+
+var (
+	RpcUrl string
 )
 
 type FlagVar struct {
@@ -55,14 +65,14 @@ func init() {
 	flag.BoolVar(&flagVar.GenerateKeystore, "generate-keystore", false, "generate keystore, eg: -generate-keystore")
 }
 
-func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server, workerServer *worker.Server) *kratos.App {
-	return kratos.New(
-		kratos.ID(id),
-		kratos.Name(Name),
-		kratos.Version(Version),
-		kratos.Metadata(map[string]string{}),
-		kratos.Logger(logger),
-		kratos.Server(
+func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server, workerServer *worker.Server) *kratosV2.App {
+	return kratosV2.New(
+		kratosV2.ID(id),
+		kratosV2.Name(Name),
+		kratosV2.Version(Version),
+		kratosV2.Metadata(map[string]string{}),
+		kratosV2.Logger(logger),
+		kratosV2.Server(
 			gs,
 			hs,
 			workerServer,
@@ -76,7 +86,10 @@ type Response struct {
 	Msg    string `json:"msg"`
 }
 
-func runVerifier(rpcUrl, privateKey string, w fyne.Window) error {
+func runVerifier(rpcUrl, privateKey string, w fyneV2.Window) error {
+	// store rpcUrl
+	RpcUrl = rpcUrl
+
 	flag.Parse()
 
 	if flagVar.GenerateKeystore {
@@ -172,7 +185,6 @@ func getSystemLogs() *Response {
 		timeI, errI := times.Stat("logs/" + files[i].Name())
 		timeJ, errJ := times.Stat("logs/" + files[j].Name())
 		if errI != nil || errJ != nil {
-			fmt.Println(errJ, errI)
 			return false
 		}
 		return timeI.ModTime().After(timeJ.ModTime())
@@ -258,7 +270,12 @@ func fetchConfigFromURL(url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(resp.Body)
 
 	data, err := io.ReadAll(resp.Body)
 
@@ -273,4 +290,122 @@ func fetchConfigFromURL(url string) (string, error) {
 	}
 	return tmpFile.Name(), nil
 
+}
+
+// get Latest Block information from log file
+
+func logWatcher(label *coloredLabel) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		panic(err)
+	}
+	defer watcher.Close()
+
+	done := make(chan bool)
+	go func() {
+		for {
+			select {
+			case event := <-watcher.Events:
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					fmt.Println("modified logFile:", event.Name)
+					blockHeight := getLatestBlockHeight(event.Name)
+					if blockHeight != 0 {
+						label.Text = "Current Block Height: " + strconv.Itoa(blockHeight)
+						label.Refresh()
+					}
+				}
+			case err := <-watcher.Errors:
+				fmt.Println("ERROR", err)
+			}
+		}
+	}()
+
+	logFile, err := getLatestLogFile()
+	if err != nil {
+		fmt.Println("ERROR", err)
+	}
+	err = watcher.Add("logs/" + logFile.Name())
+	if err != nil {
+		fmt.Println("ERROR", err)
+	}
+	<-done
+}
+
+type LogEntry struct {
+	Msg string `json:"msg"`
+}
+
+func getLatestBlockHeight(filename string) int {
+	logFile, err := os.Open(filename)
+	if err != nil {
+		fmt.Println("ERROR", err)
+		return 0
+	}
+	defer logFile.Close()
+
+	scanner := bufio.NewScanner(logFile)
+	var lastLine string
+	for scanner.Scan() {
+		lastLine = scanner.Text()
+	}
+
+	var logEntry LogEntry
+	json.Unmarshal([]byte(lastLine), &logEntry)
+
+	// Assuming the block height is in the format "start block 30524656"
+	fmt.Println(logEntry.Msg)
+	parts := strings.Split(logEntry.Msg, " ")
+	blockHeight := 0
+	if len(parts) > 5 {
+		blockHeight, err = strconv.Atoi(parts[5][:len(parts[5])-1])
+		if err != nil {
+			fmt.Println("ERROR", err)
+		}
+	}
+
+	return blockHeight
+}
+
+// utils
+func getLatestLogFile() (os.DirEntry, error) {
+	files, err := os.ReadDir("logs")
+	if err != nil {
+		panic(err)
+	}
+	sort.Slice(files, func(i, j int) bool {
+		timeI, errI := times.Stat("logs/" + files[i].Name())
+		timeJ, errJ := times.Stat("logs/" + files[j].Name())
+		if errI != nil || errJ != nil {
+			return false
+		}
+		return timeI.ModTime().After(timeJ.ModTime())
+	})
+	if len(files) == 0 {
+		return nil, fmt.Errorf("No logs found")
+	}
+
+	return files[0], nil
+}
+
+// get latest block from chain
+func getLatestBlockFromChain(label *coloredLabel) {
+	for {
+		time.Sleep(1 * time.Second)
+		if RpcUrl == "" {
+			RpcUrl = common.OP_BNB_RPC_URL
+		}
+		client, err := ethclient.Dial(RpcUrl)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		header, err := client.HeaderByNumber(context.Background(), nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+		label.Text = "Latest Block Height: " + header.Number.String()
+		label.Refresh()
+	}
+
+	//fmt.Println(header.Number.String()) // prints latest block number
 }
