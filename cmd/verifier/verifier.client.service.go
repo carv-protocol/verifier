@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	fyneV2 "fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/dialog"
 	"github.com/carv-protocol/verifier/internal/common"
 	"github.com/carv-protocol/verifier/internal/conf"
@@ -240,7 +241,7 @@ func checkVerifierIsActive() *Response {
 }
 
 // get System information
-func getSystemInformation(sys *coloredLabel, allocText *coloredLabel, totalAlloc *coloredLabel, cpuUsage *coloredLabel) {
+func getSystemInformation(sys *canvas.Text, allocText *canvas.Text, totalAlloc *canvas.Text, cpuUsage *canvas.Text) {
 	go func() {
 		for {
 			time.Sleep(2 * time.Second)
@@ -294,7 +295,7 @@ func fetchConfigFromURL(url string) (string, error) {
 
 // get Latest Block information from log file
 
-func logWatcher(label *coloredLabel) {
+func logWatcher(label *canvas.Text) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		panic(err)
@@ -388,7 +389,7 @@ func getLatestLogFile() (os.DirEntry, error) {
 }
 
 // get latest block from chain
-func getLatestBlockFromChain(label *coloredLabel) {
+func getLatestBlockFromChain(label *canvas.Text) {
 	for {
 		time.Sleep(1 * time.Second)
 		if RpcUrl == "" {

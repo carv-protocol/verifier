@@ -27,7 +27,7 @@ func main() {
 	myWindow.SetMainMenu(makeMenu(a, myWindow, stopGetLogsChan))
 	myWindow.SetMaster()
 	// verifier status
-	status := newColoredLabel("InActive", color.RGBA{255, 0, 0, 255})
+	status := colorText("InActive", color.RGBA{255, 0, 0, 255})
 	go showStatus(status)
 
 	// top
@@ -43,25 +43,25 @@ func main() {
 	leftRectangle.SetMinSize(fyne.NewSize(500, 600))
 	leftRectangle.FillColor = color.RGBA{R: 0, A: 255}
 
-	sysText := newColoredLabel("System", color.White)
+	sysText := colorText("System", color.White)
 	sysTextRectangle := canvas.NewRectangle(nil)
 	sysTextRectangle.SetMinSize(fyne.NewSize(400, 40))
 	sysTextRectangle.FillColor = color.RGBA{R: 0, A: 200}
 	sysTextRectangleContent := container.NewCenter(sysTextRectangle, sysText)
 
-	allocMemoryText := newColoredLabel("Allocated Memory: 0.0", color.White)
+	allocMemoryText := colorText("Allocated Memory: 0.0", color.White)
 	allocTextRectangle := canvas.NewRectangle(nil)
 	allocTextRectangle.SetMinSize(fyne.NewSize(400, 40))
 	allocTextRectangle.FillColor = color.RGBA{R: 255, A: 200}
 	allocTextRectangleContent := container.NewCenter(allocTextRectangle, allocMemoryText)
 
-	totalMemoryText := newColoredLabel("Total Memory: 0.0", color.White)
+	totalMemoryText := colorText("Total Memory: 0.0", color.White)
 	totalMemoryTextRectangle := canvas.NewRectangle(nil)
 	totalMemoryTextRectangle.SetMinSize(fyne.NewSize(400, 40))
 	totalMemoryTextRectangle.FillColor = color.RGBA{B: 255, A: 200}
 	totalMemoryTextRectangleContent := container.NewCenter(totalMemoryTextRectangle, totalMemoryText)
 
-	cpuInfText := newColoredLabel("CPU: 0.0", color.White)
+	cpuInfText := colorText("CPU: 0.0", color.White)
 	cpuInfTextRectangle := canvas.NewRectangle(nil)
 	cpuInfTextRectangle.SetMinSize(fyne.NewSize(400, 40))
 	cpuInfTextRectangle.FillColor = color.RGBA{B: 100, A: 200}
@@ -75,14 +75,14 @@ func main() {
 	rightRectangle.SetMinSize(fyne.NewSize(500, 600))
 	rightRectangle.FillColor = color.White
 	// current block
-	currentBlockText := newColoredLabel("Current Block Height: 0", color.White)
+	currentBlockText := colorText("Current Block Height: 0", color.White)
 	currentBlockTextRectangle := canvas.NewRectangle(nil)
 	currentBlockTextRectangle.SetMinSize(fyne.NewSize(400, 40))
 	currentBlockTextRectangle.FillColor = color.RGBA{R: 0, A: 200}
 	currentBlockTextRectangleContent := container.NewCenter(currentBlockTextRectangle, currentBlockText)
 	go logWatcher(currentBlockText)
 
-	latestBlockText := newColoredLabel("Latest Block Height: 0", color.White)
+	latestBlockText := colorText("Latest Block Height: 0", color.White)
 	latestBlockTextRectangle := canvas.NewRectangle(nil)
 	latestBlockTextRectangle.SetMinSize(fyne.NewSize(400, 40))
 	latestBlockTextRectangle.FillColor = color.RGBA{R: 100, A: 200}
@@ -259,7 +259,7 @@ func setTextArea(textArea *widget.Entry) {
 	textArea.Resize(fyne.NewSize(1000, 800))
 }
 
-func showStatus(statusLabel *coloredLabel) {
+func showStatus(statusLabel *canvas.Text) {
 	for {
 		time.Sleep(2 * time.Second)
 		data := checkVerifierIsActive()
@@ -289,57 +289,6 @@ func showLogs(textArea *widget.Entry, stopChan <-chan bool) {
 	}
 }
 
-// canvas text extension
-type coloredLabel struct {
-	widget.BaseWidget
-	Text  string
-	Color color.Color
+func colorText(text string, color color.Color) *canvas.Text {
+	return canvas.NewText(text, color)
 }
-
-func newColoredLabel(text string, color color.Color) *coloredLabel {
-	l := &coloredLabel{
-		Text:  text,
-		Color: color,
-	}
-	l.ExtendBaseWidget(l)
-	return l
-}
-
-func (l *coloredLabel) CreateRenderer() fyne.WidgetRenderer {
-	text := canvas.NewText(l.Text, l.Color)
-	text.Alignment = fyne.TextAlignLeading
-
-	return &coloredLabelRenderer{
-		label: l,
-		text:  text,
-	}
-}
-
-type coloredLabelRenderer struct {
-	label *coloredLabel
-	text  *canvas.Text
-}
-
-func (r *coloredLabelRenderer) Layout(size fyne.Size) {
-	r.text.Resize(size)
-}
-
-func (r *coloredLabelRenderer) MinSize() fyne.Size {
-	return r.text.MinSize()
-}
-
-func (r *coloredLabelRenderer) Refresh() {
-	r.text.Text = r.label.Text
-	r.text.Color = r.label.Color
-	r.text.Refresh()
-}
-
-func (r *coloredLabelRenderer) BackgroundColor() color.Color {
-	return color.Transparent
-}
-
-func (r *coloredLabelRenderer) Objects() []fyne.CanvasObject {
-	return []fyne.CanvasObject{r.text}
-}
-
-func (r *coloredLabelRenderer) Destroy() {}
