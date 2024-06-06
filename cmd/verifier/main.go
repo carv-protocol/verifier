@@ -99,11 +99,23 @@ func main() {
 	bottomHBox := container.NewHBox(layout.NewSpacer(), status)
 	content := container.NewBorder(topContent, bottomHBox, leftContent, rightRectangleContent, nil)
 
+	myWindow.SetCloseIntercept(func() {
+		if status.Text == "InActive" {
+			myWindow.Close()
+		}
+		dialog.ShowConfirm("Exit", "Are you sure you want to exit? "+
+			"\n The system has detected that your verifier is running in the background. "+
+			"\n If you close this window, the verifier will also stop!", func(b bool) {
+			if b {
+				myWindow.Close()
+			}
+		}, myWindow)
+	})
+
 	// filter log
 	myWindow.SetContent(content)
-	myWindow.FullScreen()
-
 	myWindow.ShowAndRun()
+
 }
 
 func makeMenu(a fyne.App, w fyne.Window, stopChan chan bool) *fyne.MainMenu {
