@@ -29,7 +29,7 @@ func VerifyAttestation(data string, cf *conf.Bootstrap) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	quoteAuth, err := GetQuoteV3Auth(b64Data)
+	quoteAuth, err := GetQuoteV3Auth(quoteByte)
 	if err != nil {
 		return false, err
 	}
