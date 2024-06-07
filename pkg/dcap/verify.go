@@ -23,6 +23,7 @@ func VerifyAttestation(data string, cf *conf.Bootstrap) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	
 	var quote = Quote{}
 	var byteReader = bytes.NewReader(quoteByte)
 	err = binary.Read(byteReader, binary.BigEndian, &quote)
@@ -38,7 +39,7 @@ func VerifyAttestation(data string, cf *conf.Bootstrap) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	err = quote.VerifyQuote(b64Data, &result, &quoteAuth, cf)
+	err = quote.VerifyQuote(quoteByte, &result, &quoteAuth, cf)
 	if err != nil {
 		return false, err
 	}
