@@ -23,12 +23,16 @@ func main() {
 	stopGetLogsChan := make(chan bool)
 	a := app.NewWithID("com.verifier.client")
 	myWindow := a.NewWindow("VerifierClient")
+	content := LoadUI(a, myWindow, stopGetLogsChan)
 
+	myWindow.SetContent(content)
+	myWindow.ShowAndRun()
+
+}
+
+func LoadUI(a fyne.App, myWindow fyne.Window, stopGetLogsChan chan bool) *fyne.Container {
 	myWindow.SetMainMenu(makeMenu(a, myWindow, stopGetLogsChan))
 	myWindow.SetMaster()
-	// verifier status
-	status := colorText("InActive", color.RGBA{255, 0, 0, 255})
-	go showStatus(status)
 
 	// top
 	image := canvas.NewImageFromResource(data.FyneLogoTransparent)
@@ -43,32 +47,14 @@ func main() {
 	leftRectangle.SetMinSize(fyne.NewSize(500, 600))
 	leftRectangle.FillColor = color.RGBA{R: 0, A: 255}
 
-	sysText := colorText("System", color.White)
-	sysTextRectangle := canvas.NewRectangle(nil)
-	sysTextRectangle.SetMinSize(fyne.NewSize(400, 40))
-	sysTextRectangle.FillColor = color.RGBA{R: 0, A: 200}
-	sysTextRectangleContent := container.NewCenter(sysTextRectangle, sysText)
+	// left content
+	runVerifierContentText := colorText("Left Content", color.White)
+	runVerifierContentTextRectangle := canvas.NewRectangle(nil)
+	runVerifierContentTextRectangle.SetMinSize(fyne.NewSize(400, 40))
+	runVerifierContentTextRectangle.FillColor = color.RGBA{R: 0, A: 200}
+	leftContentTextRectangleContent := container.NewCenter(runVerifierContentTextRectangle, runVerifierContentText)
 
-	allocMemoryText := colorText("Allocated Memory: 0.0", color.White)
-	allocTextRectangle := canvas.NewRectangle(nil)
-	allocTextRectangle.SetMinSize(fyne.NewSize(400, 40))
-	allocTextRectangle.FillColor = color.RGBA{R: 255, A: 200}
-	allocTextRectangleContent := container.NewCenter(allocTextRectangle, allocMemoryText)
-
-	totalMemoryText := colorText("Total Memory: 0.0", color.White)
-	totalMemoryTextRectangle := canvas.NewRectangle(nil)
-	totalMemoryTextRectangle.SetMinSize(fyne.NewSize(400, 40))
-	totalMemoryTextRectangle.FillColor = color.RGBA{B: 255, A: 200}
-	totalMemoryTextRectangleContent := container.NewCenter(totalMemoryTextRectangle, totalMemoryText)
-
-	cpuInfText := colorText("CPU: 0.0", color.White)
-	cpuInfTextRectangle := canvas.NewRectangle(nil)
-	cpuInfTextRectangle.SetMinSize(fyne.NewSize(400, 40))
-	cpuInfTextRectangle.FillColor = color.RGBA{B: 100, A: 200}
-	cpuInfTextRectangleContent := container.NewCenter(cpuInfTextRectangle, cpuInfText)
-
-	leftContent := container.NewCenter(leftRectangle, container.NewVBox(sysTextRectangleContent, allocTextRectangleContent, totalMemoryTextRectangleContent, cpuInfTextRectangleContent))
-	go getSystemInformation(sysText, allocMemoryText, totalMemoryText, cpuInfText)
+	leftContent := container.NewCenter(leftRectangle, container.NewVBox(leftContentTextRectangleContent))
 
 	//right
 	rightRectangle := canvas.NewRectangle(nil)
@@ -80,6 +66,7 @@ func main() {
 	currentBlockTextRectangle.SetMinSize(fyne.NewSize(400, 40))
 	currentBlockTextRectangle.FillColor = color.RGBA{R: 0, A: 200}
 	currentBlockTextRectangleContent := container.NewCenter(currentBlockTextRectangle, currentBlockText)
+
 	go logWatcher(currentBlockText)
 
 	latestBlockText := colorText("Latest Block Height: 0", color.White)
@@ -91,16 +78,51 @@ func main() {
 	go getLatestBlockFromChain(latestBlockText)
 
 	rightRectangleContent := container.NewCenter(rightRectangle, container.NewVBox(currentBlockTextRectangleContent, latestBlockTextRectangleContent))
-	go getSystemInformation(sysText, allocMemoryText, totalMemoryText, cpuInfText)
 
 	//middle
 
 	// bottom
-	bottomHBox := container.NewHBox(layout.NewSpacer(), status)
+	textRectangleWidth := float32(250)
+	textRectangleHeight := float32(40)
+	sysText := colorText("System", color.White)
+	sysTextRectangle := canvas.NewRectangle(nil)
+	sysTextRectangle.SetMinSize(fyne.NewSize(textRectangleWidth, textRectangleHeight))
+	sysTextRectangle.FillColor = color.RGBA{R: 0, A: 200}
+	sysTextRectangleContent := container.NewCenter(sysTextRectangle, sysText)
+
+	allocMemoryText := colorText("Allocated Memory: 0.0", color.White)
+	allocTextRectangle := canvas.NewRectangle(nil)
+	allocTextRectangle.SetMinSize(fyne.NewSize(textRectangleWidth, textRectangleHeight))
+	allocTextRectangle.FillColor = color.RGBA{R: 255, A: 200}
+	allocTextRectangleContent := container.NewCenter(allocTextRectangle, allocMemoryText)
+
+	totalMemoryText := colorText("Total Memory: 0.0", color.White)
+	totalMemoryTextRectangle := canvas.NewRectangle(nil)
+	totalMemoryTextRectangle.SetMinSize(fyne.NewSize(textRectangleWidth, textRectangleHeight))
+	totalMemoryTextRectangle.FillColor = color.RGBA{B: 255, A: 200}
+	totalMemoryTextRectangleContent := container.NewCenter(totalMemoryTextRectangle, totalMemoryText)
+
+	cpuInfText := colorText("CPU: 0.0", color.White)
+	cpuInfTextRectangle := canvas.NewRectangle(nil)
+	cpuInfTextRectangle.SetMinSize(fyne.NewSize(textRectangleWidth, textRectangleHeight))
+	cpuInfTextRectangle.FillColor = color.RGBA{B: 100, A: 200}
+	cpuInfTextRectangleContent := container.NewCenter(cpuInfTextRectangle, cpuInfText)
+
+	// verifier status
+	statusInfText := colorText("InActive", color.White)
+	statusInfTextRectangle := canvas.NewRectangle(nil)
+	statusInfTextRectangle.SetMinSize(fyne.NewSize(100, textRectangleHeight))
+	statusInfTextRectangle.FillColor = color.RGBA{B: 50, A: 100}
+	statusInfTextRectangleContent := container.NewCenter(statusInfTextRectangle, statusInfText)
+
+	go showStatus(statusInfText)
+
+	go getSystemInformation(sysText, allocMemoryText, totalMemoryText, cpuInfText)
+	bottomHBox := container.NewHBox(sysTextRectangleContent, allocTextRectangleContent, totalMemoryTextRectangleContent, cpuInfTextRectangleContent, layout.NewSpacer(), statusInfTextRectangleContent)
 	content := container.NewBorder(topContent, bottomHBox, leftContent, rightRectangleContent, nil)
 
 	myWindow.SetCloseIntercept(func() {
-		if status.Text == "InActive" {
+		if statusInfText.Text == "InActive" {
 			myWindow.Close()
 		}
 		dialog.ShowConfirm("Exit", "Are you sure you want to exit? "+
@@ -112,10 +134,7 @@ func main() {
 		}, myWindow)
 	})
 
-	// filter log
-	myWindow.SetContent(content)
-	myWindow.ShowAndRun()
-
+	return content
 }
 
 func makeMenu(a fyne.App, w fyne.Window, stopChan chan bool) *fyne.MainMenu {

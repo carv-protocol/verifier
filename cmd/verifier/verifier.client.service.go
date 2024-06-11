@@ -248,7 +248,7 @@ func getSystemInformation(sys *canvas.Text, allocText *canvas.Text, totalAlloc *
 			var memStats runtime.MemStats
 			runtime.ReadMemStats(&memStats)
 
-			sys.Text = "System Information: " + runtime.GOOS + " " + runtime.GOARCH + " " + strconv.Itoa(runtime.NumCPU()) + " CPU(s)"
+			sys.Text = "System: " + runtime.GOOS + " " + runtime.GOARCH + " " + strconv.Itoa(runtime.NumCPU()) + " CPU(s)"
 			sys.Refresh()
 
 			allocMB := float64(memStats.Alloc) / 1024 / 1024
@@ -295,10 +295,18 @@ func fetchConfigFromURL(url string) (string, error) {
 
 // get Latest Block information from log file
 
-func logWatcher(label *canvas.Text) {
+func logWatcher(label *canvas.Text) error {
+
+	_, err := os.ReadDir("logs")
+	if err != nil {
+		err := os.Mkdir("logs", 0755)
+		if err != nil {
+			return err
+		}
+	}
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer watcher.Close()
 
@@ -308,7 +316,7 @@ func logWatcher(label *canvas.Text) {
 			select {
 			case event := <-watcher.Events:
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					fmt.Println("modified logFile:", event.Name)
+					//fmt.Println("modified logFile:", event.Name)
 					blockHeight := getLatestBlockHeight(event.Name)
 					if blockHeight != 0 {
 						label.Text = "Current Block Height: " + strconv.Itoa(blockHeight)
@@ -323,13 +331,14 @@ func logWatcher(label *canvas.Text) {
 
 	logFile, err := getLatestLogFile()
 	if err != nil {
-		fmt.Println("ERROR", err)
+		return err
 	}
 	err = watcher.Add("logs/" + logFile.Name())
 	if err != nil {
-		fmt.Println("ERROR", err)
+		return err
 	}
 	<-done
+	return nil
 }
 
 type LogEntry struct {
@@ -354,7 +363,6 @@ func getLatestBlockHeight(filename string) int {
 	json.Unmarshal([]byte(lastLine), &logEntry)
 
 	// Assuming the block height is in the format "start block 30524656"
-	fmt.Println(logEntry.Msg)
 	parts := strings.Split(logEntry.Msg, " ")
 	blockHeight := 0
 	if len(parts) > 5 {
@@ -371,7 +379,7 @@ func getLatestBlockHeight(filename string) int {
 func getLatestLogFile() (os.DirEntry, error) {
 	files, err := os.ReadDir("logs")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	sort.Slice(files, func(i, j int) bool {
 		timeI, errI := times.Stat("logs/" + files[i].Name())
