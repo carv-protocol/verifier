@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/ethereum/go-ethereum/common"
 	"os"
 
 	"github.com/go-kratos/kratos/v2"
@@ -37,6 +38,9 @@ type FlagVar struct {
 	KeystorePath     string
 	KeystorePassword string
 	GenerateKeystore bool
+
+	RewardAddress  string
+	CommissionRate int
 }
 
 func init() {
@@ -45,6 +49,8 @@ func init() {
 	flag.StringVar(&flagVar.KeystorePath, "keystore-path", "", "keystore path, eg: -keystore-path .")
 	flag.StringVar(&flagVar.KeystorePassword, "keystore-password", "", "keystore password, eg: -keystore-password 123456")
 	flag.BoolVar(&flagVar.GenerateKeystore, "generate-keystore", false, "generate keystore, eg: -generate-keystore")
+	flag.StringVar(&flagVar.RewardAddress, "reward-address", "", "reward address, eg: -reward-address 0x123456")
+	flag.IntVar(&flagVar.CommissionRate, "commission-rate", 0, "commission rate, eg: -commission-rate 10")
 }
 
 func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server, workerServer *worker.Server) *kratos.App {
@@ -111,11 +117,18 @@ func main() {
 		"span.id", tracing.SpanID(),
 	)
 	logger := log.NewHelper(logFormat)
+	//TODO Check Reward Address and Commission rate
 
 	if err := key_manager.NewKeyManager(bc.Wallet, flagVar.PrivateKey, flagVar.KeystorePath, flagVar.KeystorePassword); err != nil {
 		panic(err)
 	}
 
+	if common.IsHexAddress(flagVar.RewardAddress) == false {
+		panic("invalid reward address")
+	}
+	if flagVar.CommissionRate < 0 || flagVar.CommissionRate > 100 {
+		panic("invalid commission rate")
+	}
 	app, cleanup, err := wireApp(&bc, logFormat, logger)
 	if err != nil {
 		panic(err)
