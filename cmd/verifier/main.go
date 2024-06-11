@@ -269,11 +269,6 @@ func makeMenu(a fyne.App, w fyne.Window, stopChan chan bool) *fyne.MainMenu {
 	return mainMenu
 }
 
-func TitleCss(title *widget.Label) {
-	title.TextStyle = fyne.TextStyle{Bold: true, Italic: true, Monospace: true}
-	title.Alignment = fyne.TextAlignCenter
-}
-
 func setTextArea(textArea *widget.Entry) {
 	textArea.Resize(fyne.NewSize(1000, 800))
 }
