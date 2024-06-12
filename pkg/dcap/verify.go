@@ -6,12 +6,9 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/carv-protocol/verifier/internal/conf"
-	"io"
-	"os"
 )
 
-func VerifyAttestation(data string, cf *conf.Bootstrap) (bool, error) {
+func VerifyAttestation(data string, identity, tcb, trusted string) (bool, error) {
 	b64Data, err := base64.StdEncoding.DecodeString(data)
 	if err != nil {
 		return false, err
@@ -28,11 +25,11 @@ func VerifyAttestation(data string, cf *conf.Bootstrap) (bool, error) {
 		return false, err
 	}
 
-	result, err := TrustedLoad(cf.Dacp.TrustedPath)
+	result, err := TrustedLoad(trusted)
 	if err != nil {
 		return false, err
 	}
-	err = quote.VerifyQuote(b64Data, &result, &quoteAuth, cf)
+	err = quote.VerifyQuote(b64Data, &result, &quoteAuth, identity, tcb)
 	if err != nil {
 		return false, err
 	}
@@ -43,25 +40,9 @@ type TrusTEEInfo struct {
 	TrustedEnclaves map[string][]string
 }
 
-func TrustedLoad(path string) (TrusTEEInfo, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return TrusTEEInfo{}, fmt.Errorf("error opening JSON file: %w", err)
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-
-		}
-	}(file)
-
-	byteValue, err := io.ReadAll(file)
-	if err != nil {
-		return TrusTEEInfo{}, fmt.Errorf("error reading JSON file: %w", err)
-	}
-
+func TrustedLoad(trusted string) (TrusTEEInfo, error) {
 	var info TrusTEEInfo
-	if err := json.Unmarshal(byteValue, &info); err != nil {
+	if err := json.Unmarshal([]byte(trusted), &info); err != nil {
 		return TrusTEEInfo{}, fmt.Errorf("error decoding JSON: %w", err)
 	}
 
