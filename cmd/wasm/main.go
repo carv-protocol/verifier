@@ -23,13 +23,19 @@ func register(this js.Value, args []js.Value) interface{} {
 }
 
 func VerifyAttestation(this js.Value, args []js.Value) interface{} {
-	if len(args) != 4 {
-		panic("length of args should be 4")
+	if len(args) != 5 {
+		panic("length of args should be 5")
 	}
 
-	for _, arg := range args {
-		if arg.Type() != js.TypeString {
-			panic("argument should be a string")
+	for index, arg := range args {
+		if index <= 3 {
+			if arg.Type() != js.TypeString {
+				panic(fmt.Sprintf("argument %d should be a string", index))
+			}
+		} else {
+			if arg.Type() != js.TypeFunction {
+				panic("callback should be a function")
+			}
 		}
 	}
 
