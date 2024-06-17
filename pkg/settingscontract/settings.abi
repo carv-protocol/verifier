@@ -1,0 +1,341 @@
+[
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableInvalidOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableUnauthorizedAccount",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "maxVrfActiveNodes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nodeMinOnlineDuration",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nodeVerifyDuration",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nodeSlashReward",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minTeeStakeAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "teeSlashAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "teeUnstakeDuration",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minCommissionRateModifyInterval",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint64",
+              "name": "nodeMaxMissVerifyCount",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint16",
+              "name": "maxNodeWeights",
+              "type": "uint16"
+            }
+          ],
+          "indexed": false,
+          "internalType": "struct ISettings.SettingParams",
+          "name": "params",
+          "type": "tuple"
+        }
+      ],
+      "name": "UpdateSettings",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "maxNodeWeights",
+      "outputs": [
+        {
+          "internalType": "uint16",
+          "name": "",
+          "type": "uint16"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "maxVrfActiveNodes",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "minCommissionRateModifyInterval",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "minTeeStakeAmount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nodeMaxMissVerifyCount",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nodeMinOnlineDuration",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nodeSlashReward",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "nodeVerifyDuration",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "teeSlashAmount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "teeUnstakeDuration",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "maxVrfActiveNodes",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nodeMinOnlineDuration",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nodeVerifyDuration",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nodeSlashReward",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minTeeStakeAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "teeSlashAmount",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "teeUnstakeDuration",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "minCommissionRateModifyInterval",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint64",
+              "name": "nodeMaxMissVerifyCount",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint16",
+              "name": "maxNodeWeights",
+              "type": "uint16"
+            }
+          ],
+          "internalType": "struct ISettings.SettingParams",
+          "name": "params",
+          "type": "tuple"
+        }
+      ],
+      "name": "updateSettings",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]

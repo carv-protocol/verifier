@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"github.com/carv-protocol/verifier/internal/conf"
+	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -17,7 +18,7 @@ type KeyManager struct {
 	priKey *ecdsa.PrivateKey
 }
 
-func GenerateKeystore(keystorePath string) {
+func GenerateKeystore(keystorePath string) accounts.Account {
 	if len(keystorePath) == 0 {
 		fmt.Printf("keystore path is needed")
 		os.Exit(1)
@@ -30,6 +31,7 @@ func GenerateKeystore(keystorePath string) {
 		os.Exit(1)
 	}
 	fmt.Printf("keystore NewAccount: %v", account)
+	return account
 }
 
 func NewKeyManager(walletConf *conf.Wallet, envPrivateKey, envKeystorePath, envKeystorePassword string) (err error) {

@@ -20,6 +20,8 @@ require (
 	gorm.io/plugin/dbresolver v1.5.0
 )
 
+require github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+
 require (
 	github.com/DataDog/zstd v1.4.5 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect

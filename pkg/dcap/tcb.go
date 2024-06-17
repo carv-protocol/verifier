@@ -4,8 +4,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
-	"os"
+	"net/http"
 	"sync"
 	"time"
 )
@@ -42,7 +43,7 @@ var tcbInfo struct {
 func (e *TcbInfo) GetTcbInfo(path string) *TcbInfo {
 	tcbInfo.Do(func() {
 		var err error
-		tcbInfoInstance, err := loadTcbInfo(path)
+		tcbInfoInstance, err := loadTcbInfoFromUrl(path)
 		if err != nil {
 			log.Fatalf("Failed to load TCB Info: %v", err)
 		}
@@ -51,12 +52,13 @@ func (e *TcbInfo) GetTcbInfo(path string) *TcbInfo {
 	return tcbInfo.tcbInfoInstance
 }
 
-// loadTcbInfo loads TcbInfo from a JSON file
-func loadTcbInfo(filePath string) (*TcbInfo, error) {
-	data, err := os.ReadFile(filePath)
+func loadTcbInfoFromUrl(url string) (*TcbInfo, error) {
+	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
 
 	var root struct {
 		TcbInfo struct {

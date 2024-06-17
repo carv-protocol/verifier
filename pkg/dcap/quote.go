@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/carv-protocol/verifier/internal/common"
 	"math/big"
 
 	"github.com/carv-protocol/verifier/internal/conf"
@@ -178,7 +179,7 @@ func (e *QuoteV3Auth) ToBytes() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 func (q *QuoteV3Auth) Verify(cf *conf.Bootstrap) error {
-	enclaveID := new(EnclaveId).GetEnclaveID(cf.Dacp.IdentityPath)
+	enclaveID := new(EnclaveId).GetEnclaveID(common.IDENTITY_JSON)
 	qeReport, err := q.GetQEReport()
 	if err != nil {
 		return err
@@ -213,7 +214,7 @@ func (q *QuoteV3Auth) Verify(cf *conf.Bootstrap) error {
 		return err
 	}
 	//  PCK check
-	tcbInfo := new(TcbInfo).GetTcbInfo(cf.Dacp.TcbPath)
+	tcbInfo := new(TcbInfo).GetTcbInfo(common.TCB_JSON)
 	if !bytes.Equal(tcbInfo.Fmspc, pck.Fmspc[:]) || !bytes.Equal(tcbInfo.PceID, pck.PceID[:]) {
 		return errors.New("unmatched TCB: fmspc or pceId does not match")
 	}
