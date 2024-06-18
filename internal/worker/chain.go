@@ -119,8 +119,6 @@ func (c *Chain) Start(ctx context.Context) error {
 
 	// Apply the offset to begin verification starting from the latest unverified attestation
 	c.latestBlockNumber -= c.cf.Chain.GetOffsetBlock()
-	// TODO TEST:
-	c.latestBlockNumber = 55582676
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
 	for {
