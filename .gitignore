@@ -42,3 +42,4 @@ internal/scripts
 configs/config-test.yaml
 
 cmd/wasm/main.wasm
+keystore

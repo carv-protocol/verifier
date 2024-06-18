@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/andybalholm/brotli"
+	"io/ioutil"
 )
 
 func VerifyAttestation(data string, identity, tcb, trusted string) (bool, error) {
@@ -13,14 +15,18 @@ func VerifyAttestation(data string, identity, tcb, trusted string) (bool, error)
 	if err != nil {
 		return false, err
 	}
+	quoteByte, err := decompressDataWithBrotli(b64Data)
+	if err != nil {
+		return false, err
+	}
 
 	var quote = Quote{}
-	var byteReader = bytes.NewReader(b64Data)
+	var byteReader = bytes.NewReader(quoteByte)
 	err = binary.Read(byteReader, binary.BigEndian, &quote)
 	if err != nil {
 		return false, err
 	}
-	quoteAuth, err := GetQuoteV3Auth(b64Data)
+	quoteAuth, err := GetQuoteV3Auth(quoteByte)
 	if err != nil {
 		return false, err
 	}
@@ -34,6 +40,7 @@ func VerifyAttestation(data string, identity, tcb, trusted string) (bool, error)
 		return false, err
 	}
 	return true, nil
+
 }
 
 type TrusTEEInfo struct {
@@ -47,4 +54,13 @@ func TrustedLoad(trusted string) (TrusTEEInfo, error) {
 	}
 
 	return info, nil
+}
+
+func decompressDataWithBrotli(compressedData []byte) ([]byte, error) {
+	reader := brotli.NewReader(bytes.NewReader(compressedData))
+	decompressedData, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	return decompressedData, nil
 }

@@ -175,6 +175,7 @@ func (e *QuoteV3Auth) ToBytes() ([]byte, error) {
 
 	return buf.Bytes(), nil
 }
+
 func (q *QuoteV3Auth) Verify(identity, tcbJson string) error {
 	enclaveID := new(EnclaveId).GetEnclaveID(identity)
 	qeReport, err := q.GetQEReport()
