@@ -77,6 +77,10 @@ all:
 	make generate;
 	make build;
 
+# wasm build
+.PHONY: wasm
+wasm:
+	cd cmd/wasm && GOOS=js GOARCH=wasm go build -o main.wasm
 # show help
 help:
 	@echo ''

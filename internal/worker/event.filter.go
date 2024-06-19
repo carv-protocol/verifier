@@ -33,7 +33,12 @@ func (l *LogFilter) NodeReportVerificationBatchLogFilter(ctx context.Context, c 
 		attestationID := unpackedData.AttestationIDs[i]
 		attestationInfo := unpackedData.AttestationInfos[i]
 		// Verify attestation
-		result, err := dcap.VerifyAttestation(attestationInfo, c.cf)
+		identityJson, tcbJson, trustedJson, err := tools.GetDcapConfigJsonString()
+		if err != nil {
+			c.logger.WithContext(ctx).Error("get dcap config json string error: %s", err.Error())
+			return err
+		}
+		result, err := dcap.VerifyAttestation(attestationInfo, identityJson, tcbJson, trustedJson)
 		if err != nil {
 			// If attestation is unable to be parsed and verified, this attestation should be ignored by all verifiers
 			c.logger.WithContext(ctx).Error(

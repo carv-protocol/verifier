@@ -64,7 +64,7 @@ func (e *Report) Verify(info *TrusTEEInfo) error {
 	}
 	k, v := info.TrustedEnclaves[hex.EncodeToString(e.MrSigner[:])]
 	if !v {
-		return errors.New("report not from a trusted Singner")
+		return errors.New("report not from a trusted Signer")
 	}
 
 	for _, enclave := range k {
