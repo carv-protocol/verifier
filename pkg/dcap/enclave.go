@@ -3,8 +3,6 @@ package dcap
 import (
 	"encoding/hex"
 	"encoding/json"
-	"io"
-	"net/http"
 	"strings"
 	"sync"
 )
@@ -42,9 +40,9 @@ func parseHex(s string) ([]byte, error) {
 	return hex.DecodeString(cleaned)
 }
 
-func (e *EnclaveId) GetEnclaveID(path string) *EnclaveId {
+func (e *EnclaveId) GetEnclaveID(identity string) *EnclaveId {
 	readOnly.Do(func() {
-		e, err := loadEnclaveIdFromUrl(path)
+		e, err := loadEnclaveId(identity)
 		if err != nil {
 			panic(err) // or handle error gracefully
 		}
@@ -54,16 +52,9 @@ func (e *EnclaveId) GetEnclaveID(path string) *EnclaveId {
 }
 
 // loadEnclaveId loads and parses the enclave ID from a JSON file.
-func loadEnclaveIdFromUrl(url string) (*EnclaveId, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-
+func loadEnclaveId(identityJson string) (*EnclaveId, error) {
 	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(data, &raw); err != nil {
+	if err := json.Unmarshal([]byte(identityJson), &raw); err != nil {
 		return nil, err
 	}
 

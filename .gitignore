@@ -40,4 +40,6 @@ bin/
 internal/scripts
 *_test.go
 configs/config-test.yaml
+
+cmd/wasm/main.wasm
 keystore

@@ -4,9 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"sync"
 	"time"
 )
@@ -40,10 +38,10 @@ var tcbInfo struct {
 
 // GetTcbInfo initializes or returns the singleton instance of TcbInfo
 // GetTcbInfo uses sync.Once to ensure the TcbInfo is loaded only once
-func (e *TcbInfo) GetTcbInfo(path string) *TcbInfo {
+func (e *TcbInfo) GetTcbInfo(tcbJson string) *TcbInfo {
 	tcbInfo.Do(func() {
 		var err error
-		tcbInfoInstance, err := loadTcbInfoFromUrl(path)
+		tcbInfoInstance, err := loadTcbInfo(tcbJson)
 		if err != nil {
 			log.Fatalf("Failed to load TCB Info: %v", err)
 		}
@@ -52,14 +50,8 @@ func (e *TcbInfo) GetTcbInfo(path string) *TcbInfo {
 	return tcbInfo.tcbInfoInstance
 }
 
-func loadTcbInfoFromUrl(url string) (*TcbInfo, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
-
+// loadTcbInfo loads TcbInfo from a JSON file
+func loadTcbInfo(tcbJson string) (*TcbInfo, error) {
 	var root struct {
 		TcbInfo struct {
 			Version                 uint8  `json:"version"`
@@ -80,7 +72,7 @@ func loadTcbInfoFromUrl(url string) (*TcbInfo, error) {
 		} `json:"tcbInfo"`
 	}
 
-	if err := json.Unmarshal(data, &root); err != nil {
+	if err := json.Unmarshal([]byte(tcbJson), &root); err != nil {
 		return nil, err
 	}
 
