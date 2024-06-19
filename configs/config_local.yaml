@@ -31,4 +31,4 @@ signature:
   domain_version: "1.0.0"
   expired_time: 3600
 gasless_service:
-  url: "http://localhost:8080"
+  url: "https://dev-interface.carv.io"
