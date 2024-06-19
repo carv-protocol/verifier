@@ -1,6 +1,6 @@
 package common
 
-const CACHE_EXPIRED_TIME = 10 // Second
+const CACHE_EXPIRED_TIME = 30 // Second
 const UPDATE_NODE_COMMISSION_RATE_BY_GASLESS_SERVICE = "UpdateNodeCommissionRateByGaslessService"
 const UPDATE_NODE_REWARD_CLAIMER_BY_GASLESS_SERVICE = "UpdateNodeRewardClaimerByGaslessService"
 const NODE_EXIT_BY_GASLESS_SERVICE = "NodeExitByGaslessService"

@@ -100,9 +100,10 @@ func NewChain(
 			rewardClaimer:  nodeInfos.Claimer,
 			commissionRate: nodeInfos.CommissionRate,
 		},
-		stopChan: make(chan struct{}),
-		errChan:  make(chan error),
-		cache:    cacheIns,
+		stopChan:        make(chan struct{}),
+		verifyResultMap: make(map[*big.Int]verifyResult, 0),
+		errChan:         make(chan error),
+		cache:           cacheIns,
 	}, nil
 }
 
@@ -116,7 +117,6 @@ func (c *Chain) Start(ctx context.Context) error {
 
 		c.latestBlockNumber = int64(blockNumber)
 	}
-
 	// Apply the offset to begin verification starting from the latest unverified attestation
 	c.latestBlockNumber -= c.cf.Chain.GetOffsetBlock()
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
@@ -144,8 +144,6 @@ func (c *Chain) Stop(ctx context.Context) error {
 	c.logger.WithContext(ctx).Infof("chain [%s] stopping", c.cf.Chain.ChainName)
 
 	close(c.stopChan)
-
-	// todo stop
 
 	c.logger.WithContext(ctx).Infof("chain [%s] stopped", c.cf.Chain.ChainName)
 
@@ -373,7 +371,7 @@ func (c *Chain) beforeScanEvent(nodeAddress common.Address, rewardClaimer common
 			return false
 		}
 		return false
-		// TODO Send Transaction
+		// TODO Send Transaction To Gasless Service
 	} else {
 		if c.nodeInf.rewardClaimer != rewardClaimer {
 			// Send Transaction
@@ -423,28 +421,10 @@ func (c *Chain) GetTransactionConfig(ctx context.Context) (*bind.TransactOpts, e
 	return auth, nil
 }
 
-// limitation
-func (c *Chain) checkNodeCount() (*big.Int, error) {
-	nodeCount, err := c.settingsContractObj.MaxVrfActiveNodes(&bind.CallOpts{})
-	return nodeCount, err
-}
-
+// TODO Get Information from gasless service
 func (c *Chain) isNodeCountLimitation() (bool, error) {
-	nodeCount, err := c.checkNodeCount()
-	if err != nil {
-		return false, errors.Wrap(err, "check node count error")
-	}
-	maxNodeCount, err := c.GetMaxVrfActiveNodes()
-	if err != nil {
-		return false, errors.Wrap(err, "get max node count error")
-	}
-	return nodeCount.Cmp(maxNodeCount) >= 0, nil
-}
 
-// GET Max VRF Active Nodes
-func (c *Chain) GetMaxVrfActiveNodes() (*big.Int, error) {
-	nodeCount, err := c.settingsContractObj.MaxVrfActiveNodes(&bind.CallOpts{})
-	return nodeCount, err
+	return true, nil
 }
 
 func QueryNodesLowerThanSelf(nodeAddress common.Address) ([]byte, error) {

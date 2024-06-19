@@ -36,7 +36,7 @@ func VerifyAttestation(data string, cf *conf.Bootstrap) (bool, error) {
 		return false, err
 	}
 
-	result, err := TrustedLoadFromUrl(common.TRUSTED_PATH)
+	result, err := TrustedLoadFromUrl(common.BASE_URl + common.TRUSTED_PATH)
 	if err != nil {
 		return false, err
 	}

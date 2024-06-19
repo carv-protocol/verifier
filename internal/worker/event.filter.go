@@ -59,7 +59,10 @@ func (l *LogFilter) ConfirmVrfNodesLogFilter(ctx context.Context, c *Chain, cLog
 	if err != nil {
 		return errors.Wrap(err, "contract ParseConfirmVrfNodes error")
 	}
-
+	if len(unpackedData.VrfChosen) == 0 {
+		c.logger.WithContext(ctx).Infof("no vrf node chosen")
+		return nil
+	}
 	logInfo := ConfirmVrfNodesEvent{
 		BlockNumber:     cLog.BlockNumber,
 		ContractAddress: cLog.Address,
