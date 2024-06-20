@@ -134,11 +134,11 @@ func (c *Chain) Start(ctx context.Context) error {
 	//c.latestBlockNumber = 56575423
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
-	//for {
-	//	if c.beforeScanEvent(ctx, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), uint32(c.cf.Wallet.CommissionRate), true) {
-	//		break
-	//	}
-	//}
+	for {
+		if c.beforeScanEvent(ctx, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), uint32(c.cf.Wallet.CommissionRate), true) {
+			break
+		}
+	}
 
 	c.logger.WithContext(ctx).Infof("chain [%s] beforeScanEvent success", c.cf.Chain.ChainName)
 	// Monitor and verify on-chain TEE attestations
