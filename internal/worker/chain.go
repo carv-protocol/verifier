@@ -6,6 +6,7 @@ import (
 	"github.com/carv-protocol/verifier/api/gasless"
 	"github.com/carv-protocol/verifier/pkg/contract"
 	"github.com/carv-protocol/verifier/pkg/settingscontract"
+	"github.com/carv-protocol/verifier/pkg/tools"
 	"github.com/go-kratos/kratos/v2/transport/http"
 	"github.com/patrickmn/go-cache"
 	"math/big"
@@ -43,7 +44,7 @@ type Chain struct {
 	verifierPrivKey            *ecdsa.PrivateKey
 	nodeInf                    nodeInf
 	stopChan                   chan struct{}
-	verifyResultMap            map[*big.Int]verifyResult
+	verifyResultMap            *tools.SafeMap
 	confirmVrfNodeChan         chan confirmVrfNodesInfo
 	errChan                    chan error
 	latestBlockNumber          int64
@@ -109,11 +110,12 @@ func NewChain(
 			rewardClaimer:  nodeInfos.Claimer,
 			commissionRate: nodeInfos.CommissionRate,
 		},
-		stopChan:        make(chan struct{}),
-		verifyResultMap: make(map[*big.Int]verifyResult, 0),
-		errChan:         make(chan error),
-		cache:           cacheIns,
-		gaslessClient:   gaslessClient,
+		stopChan:           make(chan struct{}),
+		confirmVrfNodeChan: make(chan confirmVrfNodesInfo),
+		verifyResultMap:    tools.NewSafeMap(),
+		errChan:            make(chan error),
+		cache:              cacheIns,
+		gaslessClient:      gaslessClient,
 	}, nil
 }
 
@@ -129,13 +131,14 @@ func (c *Chain) Start(ctx context.Context) error {
 	}
 	// Apply the offset to begin verification starting from the latest unverified attestation
 	c.latestBlockNumber -= c.cf.Chain.GetOffsetBlock()
+	//c.latestBlockNumber = 56575423
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
-	for {
-		if c.beforeScanEvent(ctx, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), uint32(c.cf.Wallet.CommissionRate), true) {
-			break
-		}
-	}
+	//for {
+	//	if c.beforeScanEvent(ctx, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), uint32(c.cf.Wallet.CommissionRate), true) {
+	//		break
+	//	}
+	//}
 
 	c.logger.WithContext(ctx).Infof("chain [%s] beforeScanEvent success", c.cf.Chain.ChainName)
 	// Monitor and verify on-chain TEE attestations
@@ -185,20 +188,20 @@ func (c *Chain) submitVerifyResult(ctx context.Context) {
 		case cvn := <-c.confirmVrfNodeChan:
 			go func(cvn confirmVrfNodesInfo) {
 				// get attestations
-				attestations := c.verifyResultMap[cvn.requestId]
+				attestationsObj, _ := c.verifyResultMap.Get(cvn.requestId.String())
 				// Send ConfirmVrfNodes
 				resultEnum := 0
-				if !attestations.result {
+				if !attestationsObj.(verifyResult).result {
 					resultEnum = 1
 				}
-				_, err := NodeReportVerificationBatchByGaslessService(ctx, c, attestations.attestationID, uint8(resultEnum), c.nodeInf.nodeListIndex)
+				_, err := NodeReportVerificationBatchByGaslessService(ctx, c, attestationsObj.(verifyResult).attestationID, uint8(resultEnum), c.nodeInf.nodeListIndex)
 				if err != nil {
 					return
 				}
 
 				// c.errChan <- err
-				c.logger.WithContext(ctx).Infof("attestation Sending: %s", attestations)
-				defer delete(c.verifyResultMap, cvn.requestId)
+				c.logger.WithContext(ctx).Infof("attestation Sending: %s", attestationsObj.(verifyResult).attestationID)
+				defer c.verifyResultMap.Delete(cvn.requestId.String())
 			}(cvn)
 
 		case <-c.stopChan:

@@ -46,12 +46,11 @@ func (l *LogFilter) NodeReportVerificationBatchLogFilter(ctx context.Context, c 
 				attestationID,
 				err.Error(),
 			)
-			return err
 		}
-		c.verifyResultMap[unpackedData.RequestID] = verifyResult{
+		c.verifyResultMap.Set(unpackedData.RequestID.String(), verifyResult{
 			attestationID: attestationID,
 			result:        result,
-		}
+		})
 
 		c.logger.WithContext(ctx).Infof("logInfo: %+v", logInfo)
 	}

@@ -336,9 +336,9 @@ func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, 
 			ChainId: (*math.HexOrDecimal256)(big.NewInt(c.cf.Chain.ChainId)),
 		},
 		Message: apitypes.TypedDataMessage{
-			"attestationID": attestationId,
-			"result":        result,
-			"index":         index,
+			"attestationID": attestationId[:],
+			"result":        strconv.Itoa(int(result)),
+			"index":         strconv.Itoa(int(index)),
 		},
 	}
 
@@ -347,16 +347,16 @@ func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, 
 		return false, err
 	}
 	// Send signature
-
-	reportVerificationRes, err := c.gaslessClient.ExplorerSendTxNodeReportVerification(ctx, &gasless.ExplorerSendTxNodeReportVerificationRequest{
+	reportVerificationRequest := &gasless.ExplorerSendTxNodeReportVerificationRequest{
 		Signer:        c.verifierAddress.String(),
-		AttestationId: string(attestationId[:]),
+		AttestationId: hex.EncodeToString(attestationId[:]),
 		Result:        uint32(result),
 		Index:         index,
 		V:             uint32(v),
 		R:             hex.EncodeToString(r[:]),
 		S:             hex.EncodeToString(s[:]),
-	})
+	}
+	reportVerificationRes, err := c.gaslessClient.ExplorerSendTxNodeReportVerification(ctx, reportVerificationRequest)
 	if err != nil {
 		return false, err
 	}
