@@ -8,7 +8,7 @@ import (
 )
 
 // loadEnclaveId loads and parses the enclave ID from a JSON file.
-// get iden
+// get identity
 func LoadEnclaveIdFromUrl(url string) (string, error) {
 	resp, err := http.Get(url)
 	if err != nil {

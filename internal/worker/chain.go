@@ -3,10 +3,10 @@ package worker
 import (
 	"context"
 	"crypto/ecdsa"
-	"fmt"
+	"github.com/carv-protocol/verifier/api/gasless"
 	"github.com/carv-protocol/verifier/pkg/contract"
 	"github.com/carv-protocol/verifier/pkg/settingscontract"
-	"github.com/carv-protocol/verifier/pkg/tools"
+	"github.com/go-kratos/kratos/v2/transport/http"
 	"github.com/patrickmn/go-cache"
 	"math/big"
 	"strings"
@@ -48,6 +48,8 @@ type Chain struct {
 	errChan                    chan error
 	latestBlockNumber          int64
 	cache                      *cache.Cache
+
+	gaslessClient gasless.GasslessHTTPClient
 }
 
 type confirmVrfNodesInfo struct {
@@ -86,6 +88,13 @@ func NewChain(
 
 	cacheIns := cache.New(5*time.Minute, 10*time.Minute)
 
+	// init gasless client
+	httpClient, err := http.NewClient(ctx, http.WithEndpoint(bootstrap.GaslessService.Url))
+	if err != nil {
+		return nil, errors.Wrapf(err, "new http client error, url: %s", bootstrap.GaslessService.Url)
+	}
+	gaslessClient := gasless.NewGasslessHTTPClient(httpClient)
+
 	return &Chain{
 		cf:                         bootstrap,
 		logger:                     logger,
@@ -104,6 +113,7 @@ func NewChain(
 		verifyResultMap: make(map[*big.Int]verifyResult, 0),
 		errChan:         make(chan error),
 		cache:           cacheIns,
+		gaslessClient:   gaslessClient,
 	}, nil
 }
 
@@ -122,7 +132,7 @@ func (c *Chain) Start(ctx context.Context) error {
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
 	for {
-		if c.beforeScanEvent(c.verifierAddress, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), uint32(c.cf.Wallet.CommissionRate)) {
+		if c.beforeScanEvent(ctx, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), uint32(c.cf.Wallet.CommissionRate), true) {
 			break
 		}
 	}
@@ -176,7 +186,16 @@ func (c *Chain) submitVerifyResult(ctx context.Context) {
 			go func(cvn confirmVrfNodesInfo) {
 				// get attestations
 				attestations := c.verifyResultMap[cvn.requestId]
-				// TODO Send ConfirmVrfNodes
+				// Send ConfirmVrfNodes
+				resultEnum := 0
+				if !attestations.result {
+					resultEnum = 1
+				}
+				_, err := NodeReportVerificationBatchByGaslessService(ctx, c, attestations.attestationID, uint8(resultEnum), c.nodeInf.nodeListIndex)
+				if err != nil {
+					return
+				}
+
 				// c.errChan <- err
 				c.logger.WithContext(ctx).Infof("attestation Sending: %s", attestations)
 				defer delete(c.verifyResultMap, cvn.requestId)
@@ -321,7 +340,6 @@ func (c *Chain) sendBatchResult(ctx context.Context, resultList []verifyResult) 
 		attestationIds[i] = r.attestationID
 		verifyResults[i] = r.result
 	}
-	// TODO Send Verify result to gasless service
 	_, err := c.SendAttestationTrx(ctx, attestationIds, verifyResults)
 	if err != nil {
 		return errors.Wrapf(err, "chain [%s] send batch tx failed", c.cf.Chain.ChainName)
@@ -330,7 +348,9 @@ func (c *Chain) sendBatchResult(ctx context.Context, resultList []verifyResult) 
 	return nil
 }
 
-func (c *Chain) beforeScanEvent(nodeAddress common.Address, rewardClaimer common.Address, commissionRate uint32) bool {
+func (c *Chain) beforeScanEvent(ctx context.Context, rewardClaimer common.Address, commissionRate uint32, isGasless bool) bool {
+	nodeAddress := c.verifierAddress
+	// Get the current timestamp
 	timestamp := big.NewInt(time.Now().Unix())
 	expiredTime := new(big.Int).Add(timestamp, big.NewInt(c.cf.Signature.ExpiredTime))
 	// Check if the node is online
@@ -359,33 +379,48 @@ func (c *Chain) beforeScanEvent(nodeAddress common.Address, rewardClaimer common
 			//// Parse the response
 			//fmt.Println(resp)
 			// TODO Replace the node
-			// TODO If no less weight node is found, service stop (waiting)
+			// If no less weight node is found, service stop (waiting)
 			// replaceNode = common.HexToAddress(resp.nodeAddress)
+			replaceNode = common.Address{}
 		}
 		// Send Transaction
 		// Below the maximum limit, the node will be added
-		resp, err := NodeEnterByGaslessService(context.Background(), c, replaceNode, expiredTime)
-		fmt.Println(resp, err)
-		if err != nil {
-			c.logger.Errorf("NodeEnterByGaslessService error: %s", err.Error())
-			return false
+		if isGasless {
+			_, err = NodeEnterByGaslessService(context.Background(), c, replaceNode, expiredTime)
+			if err != nil {
+				c.logger.Errorf("NodeEnterByGaslessService error: %s", err.Error())
+				return false
+			}
+		} else {
+			auth, _ := c.GetTransactionConfig(context.Background())
+			enter, err := NodeEnter(ctx, c, auth, replaceNode)
+			if err != nil {
+				c.logger.WithContext(ctx).Errorf("NodeEnter error: %s", err.Error())
+			}
+			c.logger.WithContext(ctx).Infof("NodeEnter success: %s", enter.Hex())
 		}
 		return false
-		// TODO Send Transaction To Gasless Service
 	} else {
 		if c.nodeInf.rewardClaimer != rewardClaimer {
 			// Send Transaction
-			UpdateNodeRewardClaimerByGaslessService(context.Background(), c, rewardClaimer, expiredTime)
-			return false
+			_, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, rewardClaimer, expiredTime)
+			if err2 != nil {
+				return false
+			}
 		}
 		if c.nodeInf.commissionRate != commissionRate {
 			// Send Transaction
-			UpdateNodeCommissionRateByGaslessService(context.Background(), c, commissionRate, expiredTime, nodeAddress)
-			return false
+			_, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, commissionRate, expiredTime)
+			if err != nil {
+				return false
+			}
+		}
+		if c.nodeInf.rewardClaimer == rewardClaimer && c.nodeInf.commissionRate == commissionRate {
+			return true
 		}
 	}
 
-	return true
+	return false
 }
 
 // Check node is or not online
@@ -402,7 +437,7 @@ func (c *Chain) GetTransactionConfig(ctx context.Context) (*bind.TransactOpts, e
 	if err != nil {
 		return nil, errors.Wrap(err, "eth client get Nonce error")
 	}
-	// TODO prod gasPrice should be changed
+	// prod gasPrice should be changed
 	gasPrice, err := c.ethClient.SuggestGasPrice(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "eth client get SuggestGasPrice error")
@@ -425,15 +460,4 @@ func (c *Chain) GetTransactionConfig(ctx context.Context) (*bind.TransactOpts, e
 func (c *Chain) isNodeCountLimitation() (bool, error) {
 
 	return true, nil
-}
-
-func QueryNodesLowerThanSelf(nodeAddress common.Address) ([]byte, error) {
-	requestTools := tools.RequestTool{}
-	//TODO Get node address
-	response, err := requestTools.GetRequest("http://localhost:8080/api/v1/nodes?nodeAddress=" + nodeAddress.Hex())
-	if err != nil {
-		return nil, err
-	}
-
-	return response, err
 }

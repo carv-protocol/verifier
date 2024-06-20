@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package api.gasless;
+
+import "google/api/annotations.proto";
+
+option go_package = "github.com/carv-protocol/verifier/api/gasless;gasless";
+
+service Gassless {
+  rpc ExplorerSendTxNodeEnter (ExplorerSendTxNodeEnterRequest) returns (Response) {
+    option (google.api.http) = {
+      post: "/explorer_alphanet/send_tx_node_enter"
+      body: "*"
+    };
+  }
+
+  rpc ExplorerSendTxNodeExit(ExplorerSendTxNodeExitRequest) returns (Response) {
+    option (google.api.http) = {
+      post: "/explorer_alphanet/send_tx_node_exit"
+      body: "*"
+    };
+  }
+
+  rpc ExplorerSendTxModifyCommissionRate(ExplorerSendTxModifyCommissionRateRequest) returns (Response) {
+    option (google.api.http) = {
+      post: "/explorer_alphanet/send_tx_modify_commission_rate"
+      body: "*"
+    };
+  }
+
+  rpc ExplorerSendTxSetRewardClaimer(ExplorerSendTxSetRewardClaimerRequest) returns (Response) {
+    option (google.api.http) = {
+      post: "/explorer_alphanet/send_tx_set_reward_claimer"
+      body: "*"
+    };
+  }
+
+  rpc ExplorerSendTxNodeReportVerification(ExplorerSendTxNodeReportVerificationRequest) returns (Response) {
+    option (google.api.http) = {
+      post: "/explorer_alphanet/send_tx_node_report_verification"
+      body: "*"
+    };
+  }
+}
+
+message ExplorerSendTxNodeEnterRequest {
+  string signer = 1;
+  string replaced_node = 2;
+  uint64 expired_at = 3;
+  uint32 v = 4;
+  string r = 5;
+  string s = 6;
+}
+
+message ExplorerSendTxNodeExitRequest {
+  string signer = 1;
+  uint64 expired_at = 2;
+  uint32 v = 3;
+  string r = 4;
+  string s = 5;
+}
+
+message ExplorerSendTxModifyCommissionRateRequest {
+  string signer = 1;
+  uint32 commission_rate = 2;
+  uint64 expired_at = 3;
+  uint32 v = 4;
+  string r = 5;
+  string s = 6;
+}
+
+message ExplorerSendTxSetRewardClaimerRequest {
+  string signer = 1;
+  string claimer = 2;
+  uint64 expired_at = 3;
+  uint32 v = 4;
+  string r = 5;
+  string s = 6;
+}
+
+message ExplorerSendTxNodeReportVerificationRequest {
+  string signer = 1;
+  string attestation_id = 2;
+  uint32 result = 3;
+  uint32 index = 4;
+  uint32 v = 5;
+  string r = 6;
+  string s = 7;
+}
+
+message Response {
+  uint32 code = 1;
+  string msg = 2;
+  string data = 3;
+}

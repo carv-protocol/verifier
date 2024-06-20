@@ -3,33 +3,247 @@
 
 openapi: 3.0.3
 info:
-    title: Verifier API
+    title: Gassless API
     version: 0.0.1
 paths:
-    /verifier/{name}:
-        get:
+    /explorer_alphanet/send_tx_modify_commission_rate:
+        post:
             tags:
-                - Verifier
-            operationId: Verifier_SayHello
-            parameters:
-                - name: name
-                  in: path
-                  required: true
-                  schema:
-                    type: string
+                - Gassless
+            operationId: Gassless_ExplorerSendTxModifyCommissionRate
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ExplorerSendTxModifyCommissionRateRequest'
+                required: true
             responses:
                 "200":
                     description: OK
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/verifier.v1.HelloReply'
+                                $ref: '#/components/schemas/Response'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /explorer_alphanet/send_tx_node_enter:
+        post:
+            tags:
+                - Gassless
+            operationId: Gassless_ExplorerSendTxNodeEnter
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ExplorerSendTxNodeEnterRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Response'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /explorer_alphanet/send_tx_node_exit:
+        post:
+            tags:
+                - Gassless
+            operationId: Gassless_ExplorerSendTxNodeExit
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ExplorerSendTxNodeExitRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Response'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /explorer_alphanet/send_tx_node_report_verification:
+        post:
+            tags:
+                - Gassless
+            operationId: Gassless_ExplorerSendTxNodeReportVerification
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ExplorerSendTxNodeReportVerificationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Response'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /explorer_alphanet/send_tx_set_reward_claimer:
+        post:
+            tags:
+                - Gassless
+            operationId: Gassless_ExplorerSendTxSetRewardClaimer
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ExplorerSendTxSetRewardClaimerRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Response'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
 components:
     schemas:
-        verifier.v1.HelloReply:
+        ExplorerSendTxModifyCommissionRateRequest:
             type: object
             properties:
+                signer:
+                    type: string
+                commissionRate:
+                    type: integer
+                    format: uint32
+                expiredAt:
+                    type: string
+                v:
+                    type: integer
+                    format: uint32
+                r:
+                    type: string
+                s:
+                    type: string
+        ExplorerSendTxNodeEnterRequest:
+            type: object
+            properties:
+                signer:
+                    type: string
+                replacedNode:
+                    type: string
+                expiredAt:
+                    type: string
+                v:
+                    type: integer
+                    format: uint32
+                r:
+                    type: string
+                s:
+                    type: string
+        ExplorerSendTxNodeExitRequest:
+            type: object
+            properties:
+                signer:
+                    type: string
+                expiredAt:
+                    type: string
+                v:
+                    type: integer
+                    format: uint32
+                r:
+                    type: string
+                s:
+                    type: string
+        ExplorerSendTxNodeReportVerificationRequest:
+            type: object
+            properties:
+                signer:
+                    type: string
+                attestationId:
+                    type: string
+                result:
+                    type: integer
+                    format: uint32
+                index:
+                    type: integer
+                    format: uint32
+                v:
+                    type: integer
+                    format: uint32
+                r:
+                    type: string
+                s:
+                    type: string
+        ExplorerSendTxSetRewardClaimerRequest:
+            type: object
+            properties:
+                signer:
+                    type: string
+                claimer:
+                    type: string
+                expiredAt:
+                    type: string
+                v:
+                    type: integer
+                    format: uint32
+                r:
+                    type: string
+                s:
+                    type: string
+        GoogleProtobufAny:
+            type: object
+            properties:
+                '@type':
+                    type: string
+                    description: The type of the serialized message.
+            additionalProperties: true
+            description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        Response:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: uint32
+                msg:
+                    type: string
+                data:
+                    type: string
+        Status:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
+                    format: int32
                 message:
                     type: string
+                    description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
+                details:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/GoogleProtobufAny'
+                    description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
+            description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
 tags:
-    - name: Verifier
+    - name: Gassless

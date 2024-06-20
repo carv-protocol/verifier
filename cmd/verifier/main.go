@@ -125,7 +125,6 @@ func main() {
 		"span.id", tracing.SpanID(),
 	)
 	logger := log.NewHelper(logFormat)
-	// TODO Test
 	bc.Wallet.Mode = 2
 	bc.Wallet.KeystorePassword = flagVar.KeystorePassword
 	bc.Wallet.KeystorePath = flagVar.KeystorePath + "/" + keystoreInfo[0]
