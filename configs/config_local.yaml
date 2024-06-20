@@ -25,7 +25,7 @@ wallet:
   keystore_path: ""
   keystore_password: ""
   reward_claimer_addr: ""
-  commission_rate: 0
+  commission_rate: 100
 signature:
   domain_name: "ProtocolService"
   domain_version: "1.0.0"
