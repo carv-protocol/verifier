@@ -1,5 +1,6 @@
 package common
 
+// TODO CACHE Expired time setting
 const CACHE_EXPIRED_TIME = 30 // Second
 const UPDATE_NODE_COMMISSION_RATE_BY_GASLESS_SERVICE = "UpdateNodeCommissionRateByGaslessService"
 const UPDATE_NODE_REWARD_CLAIMER_BY_GASLESS_SERVICE = "UpdateNodeRewardClaimerByGaslessService"
