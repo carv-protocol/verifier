@@ -314,7 +314,7 @@ func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, 
 					Type: "uint256",
 				},
 			},
-			"NodeReportVerificationData": {
+			"VerificationData": {
 				{
 					Name: "attestationID",
 					Type: "bytes32",
@@ -329,7 +329,7 @@ func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, 
 				},
 			},
 		},
-		PrimaryType: "NodeReportVerificationData",
+		PrimaryType: "VerificationData",
 		Domain: apitypes.TypedDataDomain{
 			Name:    c.cf.Signature.DomainName,
 			Version: c.cf.Signature.DomainVersion,
