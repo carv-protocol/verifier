@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"io"
+	originHttp "net/http"
 	"os"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/config"
 	"github.com/go-kratos/kratos/v2/config/file"
@@ -15,7 +16,6 @@ import (
 	"github.com/go-kratos/kratos/v2/transport/grpc"
 	"github.com/go-kratos/kratos/v2/transport/http"
 	_ "go.uber.org/automaxprocs"
-	originHttp "net/http"
 
 	verifierCommon "github.com/carv-protocol/verifier/internal/common"
 	"github.com/carv-protocol/verifier/internal/conf"

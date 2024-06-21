@@ -2,10 +2,11 @@ package worker
 
 import (
 	"context"
-	"github.com/carv-protocol/verifier/internal/conf"
 
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/google/wire"
+
+	"github.com/carv-protocol/verifier/internal/conf"
 )
 
 var ProviderSet = wire.NewSet(NewWorkerServer)

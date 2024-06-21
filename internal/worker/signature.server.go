@@ -4,17 +4,146 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"github.com/carv-protocol/verifier/api/gasless"
-	common2 "github.com/carv-protocol/verifier/internal/common"
-	"github.com/carv-protocol/verifier/pkg/tools"
+	"math/big"
+	"strconv"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 	"github.com/go-kratos/kratos/v2/log"
-	"math/big"
-	"strconv"
-	"time"
+
+	"github.com/carv-protocol/verifier/api/gasless"
+	common2 "github.com/carv-protocol/verifier/internal/common"
+	"github.com/carv-protocol/verifier/pkg/tools"
 )
+
+// Node Exit by service
+func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int) {
+	_, found := c.cache.Get(common2.NODE_EXIT_BY_GASLESS_SERVICE)
+	if found {
+		c.logger.WithContext(ctx).Errorf("NodeExitByGaslessService is in progress")
+		return
+	}
+	c.logger.WithContext(ctx).Infof("NodeExitByGaslessService start........")
+	c.cache.Set(common2.NODE_EXIT_BY_GASLESS_SERVICE, true, common2.CACHE_EXPIRED_TIME*time.Second)
+	// Call Gasless serivice
+	typedData := apitypes.TypedData{
+		Types: apitypes.Types{
+			"EIP712Domain": {
+				{
+					Name: "name",
+					Type: "string",
+				},
+				{
+					Name: "version",
+					Type: "string",
+				},
+				{
+					Name: "chainId",
+					Type: "uint256",
+				},
+			},
+			"NodeExitData": {
+				{
+					Name: "expiredAt",
+					Type: "uint256",
+				},
+			},
+		},
+		PrimaryType: "NodeExitData",
+		Domain: apitypes.TypedDataDomain{
+			Name:    c.cf.Signature.DomainName,
+			Version: c.cf.Signature.DomainVersion,
+			ChainId: (*math.HexOrDecimal256)(big.NewInt(c.cf.Chain.ChainId)),
+		},
+		Message: apitypes.TypedDataMessage{
+			"expiredAt": expiredAt,
+		},
+	}
+
+	v, r, s, err := tools.SignTypedDataAndSplit(typedData, c.verifierPrivKey)
+	if err != nil {
+		return
+	}
+	// Send signature
+	fmt.Println(v, r, s)
+
+}
+
+// Node Enter by service
+func NodeEnterByGaslessService(ctx context.Context, c *Chain, replacedNode common.Address, expiredAt *big.Int) (bool, error) {
+	_, found := c.cache.Get(common2.NODE_ENTRY_BY_GASLESS_SERVICE)
+	if found {
+		c.logger.WithContext(ctx).Errorf("NodeEnterByGaslessService is in progress")
+		return false, fmt.Errorf("NodeEnterByGaslessService is in progress")
+	}
+	c.logger.WithContext(ctx).Infof("NodeEnterByGaslessService start........")
+	c.cache.Set(common2.NODE_ENTRY_BY_GASLESS_SERVICE, true, common2.CACHE_EXPIRED_TIME*time.Second)
+
+	// Call Gasless serivice
+	typedData := apitypes.TypedData{
+		Types: apitypes.Types{
+			"EIP712Domain": {
+				{
+					Name: "name",
+					Type: "string",
+				},
+				{
+					Name: "version",
+					Type: "string",
+				},
+				{
+					Name: "chainId",
+					Type: "uint256",
+				},
+			},
+			"NodeEnterData": {
+				{
+					Name: "replacedNode",
+					Type: "address",
+				},
+				{
+					Name: "expiredAt",
+					Type: "uint256",
+				},
+			},
+		},
+		PrimaryType: "NodeEnterData",
+		Domain: apitypes.TypedDataDomain{
+			Name:    c.cf.Signature.DomainName,
+			Version: c.cf.Signature.DomainVersion,
+			ChainId: (*math.HexOrDecimal256)(big.NewInt(c.cf.Chain.ChainId)),
+		},
+		Message: apitypes.TypedDataMessage{
+			"replacedNode": replacedNode.String(),
+			"expiredAt":    expiredAt,
+		},
+	}
+
+	v, r, s, err := tools.SignTypedDataAndSplit(typedData, c.verifierPrivKey)
+	if err != nil {
+		return false, err
+	}
+	nodeEnterRequest := &gasless.ExplorerSendTxNodeEnterRequest{
+		Signer:       c.verifierAddress.String(),
+		ReplacedNode: replacedNode.String(),
+		ExpiredAt:    expiredAt.Uint64(),
+		V:            uint32(v),
+		R:            hex.EncodeToString(r[:]),
+		S:            hex.EncodeToString(s[:]),
+	}
+	enter, err := c.gaslessClient.ExplorerSendTxNodeEnter(ctx, nodeEnterRequest)
+	if err != nil {
+		return false, err
+	}
+	c.logger.WithContext(ctx).Infof("NodeEnterByGaslessService success %s", enter)
+	if enter.Code != 0 {
+		return false, fmt.Errorf("NodeEnterByGaslessService failed %s", enter.Msg)
+	}
+	return true, err
+
+}
 
 // Update node commission rate by service
 func UpdateNodeCommissionRateByGaslessService(ctx context.Context, c *Chain, commissionRate uint32, expiredAt *big.Int) (bool, error) {
@@ -158,133 +287,6 @@ func UpdateNodeRewardClaimerByGaslessService(ctx context.Context, c *Chain, rewa
 		return false, fmt.Errorf("UpdateNodeRewardClaimerByGaslessService failed %s", setRes.Msg)
 	}
 	return true, nil
-}
-
-// Node Exit by service
-func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int) {
-	_, found := c.cache.Get(common2.NODE_EXIT_BY_GASLESS_SERVICE)
-	if found {
-		c.logger.WithContext(ctx).Errorf("NodeExitByGaslessService is in progress")
-		return
-	}
-	c.logger.WithContext(ctx).Infof("NodeExitByGaslessService start........")
-	c.cache.Set(common2.NODE_EXIT_BY_GASLESS_SERVICE, true, common2.CACHE_EXPIRED_TIME*time.Second)
-	// Call Gasless serivice
-	typedData := apitypes.TypedData{
-		Types: apitypes.Types{
-			"EIP712Domain": {
-				{
-					Name: "name",
-					Type: "string",
-				},
-				{
-					Name: "version",
-					Type: "string",
-				},
-				{
-					Name: "chainId",
-					Type: "uint256",
-				},
-			},
-			"NodeExitData": {
-				{
-					Name: "expiredAt",
-					Type: "uint256",
-				},
-			},
-		},
-		PrimaryType: "NodeExitData",
-		Domain: apitypes.TypedDataDomain{
-			Name:    c.cf.Signature.DomainName,
-			Version: c.cf.Signature.DomainVersion,
-			ChainId: (*math.HexOrDecimal256)(big.NewInt(c.cf.Chain.ChainId)),
-		},
-		Message: apitypes.TypedDataMessage{
-			"expiredAt": expiredAt,
-		},
-	}
-
-	v, r, s, err := tools.SignTypedDataAndSplit(typedData, c.verifierPrivKey)
-	if err != nil {
-		return
-	}
-	// Send signature
-	fmt.Println(v, r, s)
-
-}
-
-// Node Enter by service
-func NodeEnterByGaslessService(ctx context.Context, c *Chain, replacedNode common.Address, expiredAt *big.Int) (bool, error) {
-	_, found := c.cache.Get(common2.NODE_ENTRY_BY_GASLESS_SERVICE)
-	if found {
-		c.logger.WithContext(ctx).Errorf("NodeEnterByGaslessService is in progress")
-		return false, fmt.Errorf("NodeEnterByGaslessService is in progress")
-	}
-	c.logger.WithContext(ctx).Infof("NodeEnterByGaslessService start........")
-	c.cache.Set(common2.NODE_ENTRY_BY_GASLESS_SERVICE, true, common2.CACHE_EXPIRED_TIME*time.Second)
-
-	// Call Gasless serivice
-	typedData := apitypes.TypedData{
-		Types: apitypes.Types{
-			"EIP712Domain": {
-				{
-					Name: "name",
-					Type: "string",
-				},
-				{
-					Name: "version",
-					Type: "string",
-				},
-				{
-					Name: "chainId",
-					Type: "uint256",
-				},
-			},
-			"NodeEnterData": {
-				{
-					Name: "replacedNode",
-					Type: "address",
-				},
-				{
-					Name: "expiredAt",
-					Type: "uint256",
-				},
-			},
-		},
-		PrimaryType: "NodeEnterData",
-		Domain: apitypes.TypedDataDomain{
-			Name:    c.cf.Signature.DomainName,
-			Version: c.cf.Signature.DomainVersion,
-			ChainId: (*math.HexOrDecimal256)(big.NewInt(c.cf.Chain.ChainId)),
-		},
-		Message: apitypes.TypedDataMessage{
-			"replacedNode": replacedNode.String(),
-			"expiredAt":    expiredAt,
-		},
-	}
-
-	v, r, s, err := tools.SignTypedDataAndSplit(typedData, c.verifierPrivKey)
-	if err != nil {
-		return false, err
-	}
-	nodeEnterRequest := &gasless.ExplorerSendTxNodeEnterRequest{
-		Signer:       c.verifierAddress.String(),
-		ReplacedNode: replacedNode.String(),
-		ExpiredAt:    expiredAt.Uint64(),
-		V:            uint32(v),
-		R:            hex.EncodeToString(r[:]),
-		S:            hex.EncodeToString(s[:]),
-	}
-	enter, err := c.gaslessClient.ExplorerSendTxNodeEnter(ctx, nodeEnterRequest)
-	if err != nil {
-		return false, err
-	}
-	c.logger.WithContext(ctx).Infof("NodeEnterByGaslessService success %s", enter)
-	if enter.Code != 0 {
-		return false, fmt.Errorf("NodeEnterByGaslessService failed %s", enter.Msg)
-	}
-	return true, err
-
 }
 
 // Node Report Verification Batch by service

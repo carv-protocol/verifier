@@ -2,9 +2,10 @@ package tools
 
 import (
 	"fmt"
-	"github.com/carv-protocol/verifier/internal/common"
 	"io"
 	"net/http"
+
+	"github.com/carv-protocol/verifier/internal/common"
 )
 
 // loadEnclaveId loads and parses the enclave ID from a JSON file.

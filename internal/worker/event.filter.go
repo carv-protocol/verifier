@@ -2,11 +2,13 @@ package worker
 
 import (
 	"context"
-	"github.com/carv-protocol/verifier/pkg/dcap"
-	"github.com/carv-protocol/verifier/pkg/tools"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
 	"sort"
+
+	"github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/carv-protocol/verifier/pkg/dcap"
+	"github.com/carv-protocol/verifier/pkg/tools"
 )
 
 type LogFilter struct {

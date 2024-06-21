@@ -3,18 +3,11 @@ package worker
 import (
 	"context"
 	"crypto/ecdsa"
-	"github.com/carv-protocol/verifier/api/gasless"
-	"github.com/carv-protocol/verifier/pkg/contract"
-	"github.com/carv-protocol/verifier/pkg/settingscontract"
-	"github.com/carv-protocol/verifier/pkg/tools"
-	"github.com/go-kratos/kratos/v2/transport/http"
-	"github.com/patrickmn/go-cache"
+	"github.com/pkg/errors"
 	"math/big"
 	"strings"
 	"time"
 
-	"github.com/carv-protocol/verifier/internal/conf"
-	"github.com/carv-protocol/verifier/internal/key_manager"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,7 +15,15 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-kratos/kratos/v2/log"
-	"github.com/pkg/errors"
+	"github.com/go-kratos/kratos/v2/transport/http"
+	"github.com/patrickmn/go-cache"
+
+	"github.com/carv-protocol/verifier/api/gasless"
+	"github.com/carv-protocol/verifier/internal/conf"
+	"github.com/carv-protocol/verifier/internal/key_manager"
+	"github.com/carv-protocol/verifier/pkg/contract"
+	"github.com/carv-protocol/verifier/pkg/settingscontract"
+	"github.com/carv-protocol/verifier/pkg/tools"
 )
 
 const (
