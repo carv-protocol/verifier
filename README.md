@@ -65,26 +65,45 @@ If you want to pass the private key through startup parameters, you need to set 
 
 ```shell
 # Pass the private key in clear text
-./verifier -conf ../configs/config.yaml -private-key <Your Private Key>
+./verifier -conf ../configs/config.yaml -private-key <Your Private Key> -reward-address <Your Reward Address> -commission-rate <Your Commission Rate>
 
 # By specifying keystore
-./verifier -conf ../configs/config.yaml -keystore-path <Path to keystore file> -keystore-password <keystore's password>
+./verifier -conf ../configs/config.yaml -keystore-path <Path to keystore file> -keystore-password <keystore password> -reward-address <Your Reward Address> -commission-rate <Your Commission Rate>
 ```
 
 In order to facilitate user operation, verifier provides a tool to generate a new keystore, run
 ```shell
 ./verifier -generate-keystore -keystore-path <path to generate your keystore file>
 ```
+After running the command, you will be prompted to enter a password for the keystore. After entering the password, the keystore file will be generated in the specified path.
+And then you can run the verifier with the keystore file path and password before you delegate to the keystore address.
+> Before you run the verifier, you must delegate to the keystore address. After the delegation is successful, you can run the verifier again.
+> Delegated address you can get from the terminal after generating the keystore.
+> You can delegate your License by below url:
+> -  [Delegate-testnet](https://testnet-explorer.carv.io/verifiers)
+> - [Delegate-mainnet](https://explorer.carv.io/verifiers)
+
 
 #### through configuration file
 
-Configure the plain text private key: Set `wallet.mode` in the configuration file to `1`, and write the plain text private key into `wallet.private_key`. Then run
+Configure the plain text private key: 
+1. Set `wallet.mode` in the configuration file to `1`, 
+2. Write the plain text private key into `wallet.private_key`, 
+3. Write your reward address into `wallet.reward_claimer_addr`, 
+4. Write your commission rate into `wallet.commission_rate`.
+Then run
 
 ```shell
-./verifier -conf ../configs/config.yaml
+./verifier -conf ../configs/config.yaml 
 ```
 
-- Configure the path and password of the keystore: Set `wallet.mode` in the configuration file to `2`, and write the path and password of the keystore file into `wallet.keystore_path` and `wallet.keystore_password`. Then run
+Configure the path and password of the keystore: 
+1. Set `wallet.mode` in the configuration file to `2`, 
+2. Write the path and password of the keystore file into `wallet.keystore_path` 
+3. Write the keystore password into `wallet.keystore_password`. 
+4. Write your reward address into `wallet.reward_claimer_addr`,
+5. Write your commission rate into `wallet.commission_rate`.
+Then run
 
 ```shell
 ./verifier -conf ../configs/config.yaml
@@ -94,33 +113,12 @@ Configure the plain text private key: Set `wallet.mode` in the configuration fil
 
 One of the quickest ways to run verifier is by using Docker:
 
-```shell
-docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf carvprotocol/verifier
-```
+#### Use Private Key (mode = 0)
 
-Note that you need to configure your private key in the configuration file. Similarly, you can configure both plaintext and keystore methods.
-
-### Configuration
-
+#### Update config_docker.yaml
+Update your private_key and run :
 ```yaml
-chain:
-  # The chain id of the chain that the verifier program interacts with
-  chain_id: 5611
-  # The chain name of the chain that the verifier program interacts with
-  chain_name: "opBNB"
-  # The rpc url of the blockchain node which verifier program interacts with
-  rpc_url: "https://opbnb-testnet.nodereal.io/v1/9e210feafbec4ed9bd48f855c2bd979a"
-  # The block height at which verifier starts synchronizing data
-  start_block: 26623154
-  # block height interval for synchronizing data at one time
-  offset_block: 1
-contract:
-  # The contract address of carv on this chain
-  addr: "0x39afd848cd4a83cddd06f340ae584c547e53873d"
-  # The contract address of tee on this chain
-  tee_addr : "0x19baa72643aa11b28cb6251fd7596201778ead9a"
-  # The topic id of the event corresponding to the attestation published by tee
-  topic: "0x99a038e9d345d0b12130b3b1fb003bf8f2d3a5c27ce2a800bbb1608efff6c591"
+......
 wallet:
   # wallet mode, by which way to pass the private key
   # 0: through startup parameters
@@ -130,9 +128,87 @@ wallet:
   # plain text private key, needed when mode is 1
   private_key: "99a038e9d345d0b12130b3b1fb003bf8f2d3a5c27ce2a800bbb1608efff6c591"
   # path of the keystore, needed when mode is 2
-  keystore_path: "/Users/alice/.keystore"
+  keystore_path: ""
+  # password of the keystore, needed when mode is 2
+  keystore_password: ""
+......
+```
+
+```shell
+docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf carvprotocol/verifier
+```
+
+#### Use Keystore (mode = 2)
+If you want to use keystore, you need to generate a keystore file first. You can use the following command to generate a keystore file.
+```shell
+./verifier -generate-keystore -keystore-path <path to generate your keystore file>
+```
+After running the command, you can run verifier by following the steps below.
+##### update config_docker.yaml
+Update your keystore_path and keystore_password and run :
+```yaml
+......
+
+wallet:
+  # wallet mode, by which way to pass the private key
+  # 0: through startup parameters
+  # 1: through plain text private key in config file
+  # 2: through path and password of the keystore in config file
+  mode: 2
+  # plain text private key, needed when mode is 1
+  private_key: ""
+  # path of the keystore, needed when mode is 2
+  keystore_path: "/data/conf/xxxx/UTC--2021-09-29T07-00-00.000000000Z--xxxx"
   # password of the keystore, needed when mode is 2
   keystore_password: "123456"
+......
+
+```
+
+```shell
+docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf -v /<Path To Keystore direction>:/data/keystore carvprotocol/verifier
+```
+
+### Configuration
+
+```yaml
+chain:
+  chain_id: 421614
+  chain_name: "arbitrum-sepolia"
+  rpc_url: "https://sepolia-rollup.arbitrum.io/rpc"
+  start_block: 0
+  offset_block: 3600 # opBNB block time: 1 sec. An offset of 3600 starts fetching blocks from 1 hours ago.
+contract:
+  addr: "0xcb37148add8b8be58034a742495d935c78d9fd76"
+  tee_addr : "0x7f57004E08ef1702b2b88b87ae01a561ae10F10e"
+  topic1: "0x89a3b784b99180438f3b2027aa89e97c3c3ed66e8dc78a555d7013b39caf1a89"
+  topic2: "0x455929120054502ca2ea8194b26e7bb3acb631d30177f6881ffa70581abd4a13"
+settings_contract:
+  addr: "0xBeFAB38c0Cf603Ca59fe064fc7B3c2BcA726A28F"
+#wallet:
+  ## wallet mode, by which way to pass the private key
+  ## 0: through startup parameters
+  ## 1: through plain text private key in config file
+  ## 2: through path and password of the keystore in config file
+#  mode: 1
+#  private_key: "99a038e9d345d0b12130b3b1fb003bf8f2d3a5c27ce2a800bbb1608efff6c591"
+#  keystore_path: ""
+#  keystore_password: ""
+#  reward_claimer_addr: "0x689d0b32Da0480095b7AE7b604f1b1997736B3F9"
+#  commission_rate: 100
+wallet:
+  mode: 2
+  private_key: ""
+  keystore_path: "./keystore/UTC--2024-06-25T12-01-01.663731000Z--031cff11b035aa5f5189f163c1fc937bf0be235c"
+  keystore_password: "150318"
+  reward_claimer_addr: "0x689d0b32Da0480095b7AE7b604f1b1997736B3F9"
+  commission_rate: 100
+signature:
+  domain_name: "ProtocolService"
+  domain_version: "1.0.0"
+  expired_time: 3600
+gasless_service:
+  url: "https://dev-interface.carv.io"
 ```
 
 ## Contribution

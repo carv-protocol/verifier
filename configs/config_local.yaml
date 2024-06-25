@@ -19,12 +19,23 @@ contract:
   topic2: "0x455929120054502ca2ea8194b26e7bb3acb631d30177f6881ffa70581abd4a13"
 settings_contract:
   addr: "0xBeFAB38c0Cf603Ca59fe064fc7B3c2BcA726A28F"
+#wallet:
+  # wallet mode, by which way to pass the private key
+  # 0: through startup parameters
+  # 1: through plain text private key in config file
+  # 2: through path and password of the keystore in config file
+#  mode: 1
+#  private_key: "99a038e9d345d0b12130b3b1fb003bf8f2d3a5c27ce2a800bbb1608efff6c591"
+#  keystore_path: ""
+#  keystore_password: ""
+#  reward_claimer_addr: "0x689d0b32Da0480095b7AE7b604f1b1997736B3F9"
+#  commission_rate: 100
 wallet:
-  mode: 0
+  mode: 2
   private_key: ""
-  keystore_path: ""
-  keystore_password: ""
-  reward_claimer_addr: ""
+  keystore_path: "./keystore/UTC--2024-06-25T12-01-01.663731000Z--031cff11b035aa5f5189f163c1fc937bf0be235c"
+  keystore_password: "150318"
+  reward_claimer_addr: "0x689d0b32Da0480095b7AE7b604f1b1997736B3F9"
   commission_rate: 100
 signature:
   domain_name: "ProtocolService"
