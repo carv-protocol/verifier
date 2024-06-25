@@ -115,8 +115,8 @@ One of the quickest ways to run verifier is by using Docker:
 
 #### Use Private Key (mode = 0)
 
-#### Update config_docker.yaml
-Update your private_key and run :
+##### Update config_docker.yaml
+> Update your private_key and run :
 ```yaml
 ......
 wallet:
@@ -139,7 +139,7 @@ docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/da
 ```
 
 #### Use Keystore (mode = 2)
-If you want to use keystore, you need to generate a keystore file first. You can use the following command to generate a keystore file.
+> If you want to use keystore, you need to generate a keystore file first. You can use the following command to generate a keystore file.
 ```shell
 ./verifier -generate-keystore -keystore-path <path to generate your keystore file>
 ```
