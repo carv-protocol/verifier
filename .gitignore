@@ -38,5 +38,4 @@ bin/
 *.swp
 
 internal/scripts
-*_test.go
 configs/config-test.yaml
