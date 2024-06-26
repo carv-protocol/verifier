@@ -23,7 +23,7 @@ func GenerateKeystore(keystorePath string) accounts.Account {
 		fmt.Printf("keystore path is needed")
 		os.Exit(1)
 	}
-	password := utils.GetPassPhrase("Your new account is locked with a password. Please give a password. Do not forget this password.", true)
+	password := utils.GetPassPhrase("Your new account will be locked with a password. Please give a password. Do not forget this password.", true)
 	ks := keystore.NewKeyStore(keystorePath, keystore.StandardScryptN, keystore.StandardScryptP)
 	account, err := ks.NewAccount(password)
 	if err != nil {
