@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"crypto/ecdsa"
-	"fmt"
 	"github.com/pkg/errors"
 	"math/big"
 	"strings"
@@ -76,8 +75,6 @@ func NewChain(
 		return nil, errors.Wrapf(err, "NewContract error")
 	}
 
-	settingContractObj, err := settingscontract.NewSettingscontract(common.HexToAddress(bootstrap.SettingsContract.Addr), ethClient)
-
 	privateKey := key_manager.Inst().PrivateKey()
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
@@ -103,7 +100,6 @@ func NewChain(
 		logger:                     logger,
 		ethClient:                  ethClient,
 		protocolServiceContractObj: protocolServiceContractObj,
-		settingsContractObj:        settingContractObj,
 		verifierAddress:            verifierAddress,
 		verifierPrivKey:            privateKey,
 		nodeInf: nodeInf{
@@ -143,7 +139,7 @@ func (c *Chain) Start(ctx context.Context) error {
 		if err != nil {
 			c.logger.Errorf("NodeInfos error: %s", err.Error())
 		}
-		fmt.Println(nodeInfos)
+		c.logger.WithContext(ctx).Infof("nodeInfos: %v", nodeInfos)
 		if c.beforeScanEvent(ctx, nodeInfos.Claimer, nodeInfos.CommissionRate, true) {
 			break
 		}

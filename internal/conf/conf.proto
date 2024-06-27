@@ -19,7 +19,6 @@ message Bootstrap {
   ENV env = 3;
   Chain chain = 4;
   Contract contract = 5;
-  SettingsContract settings_contract = 6;
   Wallet wallet = 7;
   Signature signature = 8;
   GaslessService gasless_service = 9;
@@ -66,10 +65,6 @@ message Contract {
   string tee_addr = 2;
   string topic1 = 3; // topic1 is the topic of the event: teeReportAttestations
   string topic2 = 4; // topic2 is the topic of the event: confirmVrfNode
-}
-
-message SettingsContract {
-  string addr = 1;
 }
 
 message Wallet {
