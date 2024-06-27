@@ -22,7 +22,6 @@ import (
 	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/internal/key_manager"
 	"github.com/carv-protocol/verifier/pkg/contract"
-	"github.com/carv-protocol/verifier/pkg/settingscontract"
 	"github.com/carv-protocol/verifier/pkg/tools"
 )
 
@@ -40,7 +39,6 @@ type Chain struct {
 	logger                     *log.Helper
 	ethClient                  *ethclient.Client
 	protocolServiceContractObj *contract.Contract
-	settingsContractObj        *settingscontract.Settingscontract
 	verifierAddress            common.Address
 	verifierPrivKey            *ecdsa.PrivateKey
 	nodeInf                    nodeInf
