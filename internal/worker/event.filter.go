@@ -85,7 +85,7 @@ func (l *LogFilter) ConfirmVrfNodesLogFilter(ctx context.Context, c *Chain, cLog
 	})
 	//
 	searchResBool := tools.BinarySearch(unpackedData.VrfChosen, c.nodeInf.nodeId, func(u uint32, u2 uint32) bool {
-		return u == u2
+		return u < u2
 	})
 	c.logger.WithContext(ctx).Error("searchResBool: %v", searchResBool)
 	if searchResBool == -1 {

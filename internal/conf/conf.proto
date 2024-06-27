@@ -19,7 +19,6 @@ message Bootstrap {
   ENV env = 3;
   Chain chain = 4;
   Contract contract = 5;
-  SettingsContract settings_contract = 6;
   Wallet wallet = 7;
   Signature signature = 8;
   GaslessService gasless_service = 9;
@@ -68,10 +67,6 @@ message Contract {
   string topic2 = 4; // topic2 is the topic of the event: confirmVrfNode
 }
 
-message SettingsContract {
-  string addr = 1;
-}
-
 message Wallet {
   enum Mode {
     ModeEnvVar = 0;
@@ -85,7 +80,7 @@ message Wallet {
   string keystore_password = 4;
 
   string reward_claimer_addr = 5;
-  int64 commissionRate = 6;
+  int64 commission_rate = 6;
 }
 
 message Signature {

@@ -22,7 +22,6 @@ import (
 	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/internal/key_manager"
 	"github.com/carv-protocol/verifier/pkg/contract"
-	"github.com/carv-protocol/verifier/pkg/settingscontract"
 	"github.com/carv-protocol/verifier/pkg/tools"
 )
 
@@ -40,7 +39,6 @@ type Chain struct {
 	logger                     *log.Helper
 	ethClient                  *ethclient.Client
 	protocolServiceContractObj *contract.Contract
-	settingsContractObj        *settingscontract.Settingscontract
 	verifierAddress            common.Address
 	verifierPrivKey            *ecdsa.PrivateKey
 	nodeInf                    nodeInf
@@ -75,8 +73,6 @@ func NewChain(
 		return nil, errors.Wrapf(err, "NewContract error")
 	}
 
-	settingContractObj, err := settingscontract.NewSettingscontract(common.HexToAddress(bootstrap.SettingsContract.Addr), ethClient)
-
 	privateKey := key_manager.Inst().PrivateKey()
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
@@ -102,7 +98,6 @@ func NewChain(
 		logger:                     logger,
 		ethClient:                  ethClient,
 		protocolServiceContractObj: protocolServiceContractObj,
-		settingsContractObj:        settingContractObj,
 		verifierAddress:            verifierAddress,
 		verifierPrivKey:            privateKey,
 		nodeInf: nodeInf{
@@ -127,16 +122,23 @@ func (c *Chain) Start(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrapf(err, "chain [%s] get BlockNumber error", c.cf.Chain.ChainName)
 		}
-
 		c.latestBlockNumber = int64(blockNumber)
+		c.logger.WithContext(ctx).Infof("chain [%s] latestBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 	}
 	// Apply the offset to begin verification starting from the latest unverified attestation
 	c.latestBlockNumber -= c.cf.Chain.GetOffsetBlock()
-	//c.latestBlockNumber = 56575423
+	//c.latestBlockNumber = 58773889
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
 	for {
-		if c.beforeScanEvent(ctx, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), uint32(c.cf.Wallet.CommissionRate), true) {
+		// check again
+		time.Sleep(2 * time.Second)
+		nodeInfos, err := c.protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, c.verifierAddress)
+		if err != nil {
+			c.logger.Errorf("NodeInfos error: %s", err.Error())
+		}
+		c.logger.WithContext(ctx).Infof("nodeInfos: %v", nodeInfos)
+		if c.beforeScanEvent(ctx, nodeInfos.Claimer, nodeInfos.CommissionRate, true) {
 			break
 		}
 	}
@@ -364,31 +366,16 @@ func (c *Chain) beforeScanEvent(ctx context.Context, rewardClaimer common.Addres
 		return false
 	}
 	if !isOnline {
-		replaceNode := nodeAddress
 		c.logger.Errorf("node [%s] is offline, waiting online", nodeAddress.Hex())
-		// Check if the node count has reached the maximum limit
-		isLimitation, err := c.isNodeCountLimitation()
+		replaceNodeReq := &gasless.ExplorerReplacedNodeRequest{
+			VerifierAddr: nodeAddress.Hex(),
+		}
+		replacedNodeResp, err := c.gaslessClient.ExplorerReplacedNode(context.Background(), replaceNodeReq)
 		if err != nil {
-			c.logger.Errorf("isNodeCountLimitation error: %s", err.Error())
 			return false
 		}
-		if isLimitation {
-			// Above the maximum limit, the node will be replaced
-			// Get the node from backend
-			//resp, err := QueryNodesLowerThanSelf(nodeAddress)
-			//if err != nil {
-			//	c.logger.Errorf("QueryNodesLowerThanSelf error: %s", err.Error())
-			//	return false
-			//}
-			//// Parse the response
-			//fmt.Println(resp)
-			// TODO Replace the node
-			// If no less weight node is found, service stop (waiting)
-			// replaceNode = common.HexToAddress(resp.nodeAddress)
-			replaceNode = common.Address{}
-		}
+		replaceNode := common.HexToAddress(replacedNodeResp.Data.ReplacedAddr)
 		// Send Transaction
-		// Below the maximum limit, the node will be added
 		if isGasless {
 			_, err = NodeEnterByGaslessService(context.Background(), c, replaceNode, expiredTime)
 			if err != nil {
@@ -405,21 +392,26 @@ func (c *Chain) beforeScanEvent(ctx context.Context, rewardClaimer common.Addres
 		}
 		return false
 	} else {
-		if c.nodeInf.rewardClaimer != rewardClaimer {
+		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()) {
 			// Send Transaction
-			_, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, rewardClaimer, expiredTime)
+			_, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
 			if err2 != nil {
 				return false
 			}
+		} else {
+			c.logger.WithContext(ctx).Infof("Current rewardClaimer: %s success.", rewardClaimer.Hex())
 		}
-		if c.nodeInf.commissionRate != commissionRate {
+		if int(c.cf.Wallet.CommissionRate) != int(commissionRate) {
 			// Send Transaction
-			_, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, commissionRate, expiredTime)
+			_, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
 			if err != nil {
 				return false
 			}
+		} else {
+			c.logger.WithContext(ctx).Infof("Current commissionRate: %d success.", commissionRate)
 		}
-		if c.nodeInf.rewardClaimer == rewardClaimer && c.nodeInf.commissionRate == commissionRate {
+		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) == strings.ToLower(rewardClaimer.Hex()) && int(c.cf.Wallet.CommissionRate) == int(commissionRate) {
+			c.logger.WithContext(ctx).Infof("node [%s] is online", nodeAddress.Hex())
 			return true
 		}
 	}

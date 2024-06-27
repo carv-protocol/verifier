@@ -41,6 +41,12 @@ service Gassless {
       body: "*"
     };
   }
+
+  rpc ExplorerReplacedNode(ExplorerReplacedNodeRequest) returns (ExplorerReplacedNodeResponse) {
+    option (google.api.http) = {
+      get: "/explorer_alphanet/replaced_node"
+    };
+  }
 }
 
 message ExplorerSendTxNodeEnterRequest {
@@ -86,6 +92,20 @@ message ExplorerSendTxNodeReportVerificationRequest {
   uint32 v = 5;
   string r = 6;
   string s = 7;
+}
+
+message ExplorerReplacedNodeRequest {
+  string verifier_addr = 1;
+}
+
+message ExplorerReplacedNodeResponse {
+  uint32 code = 1;
+  string msg = 2;
+  ReplacedNode data = 3;
+}
+
+message ReplacedNode {
+  string replaced_addr = 1;
 }
 
 message Response {
