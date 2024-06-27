@@ -109,7 +109,7 @@ chain:
   # The chain name of the chain that the verifier program interacts with
   chain_name: "opBNB"
   # The rpc url of the blockchain node which verifier program interacts with
-  rpc_url: "https://opbnb-testnet.nodereal.io/v1/9e210feafbec4ed9bd48f855c2bd979a"
+  rpc_url: "https://opbnb-testnet-rpc.bnbchain.org/"
   # The block height at which verifier starts synchronizing data
   start_block: 26623154
   # block height interval for synchronizing data at one time
