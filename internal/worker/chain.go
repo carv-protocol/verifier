@@ -122,12 +122,12 @@ func (c *Chain) Start(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrapf(err, "chain [%s] get BlockNumber error", c.cf.Chain.ChainName)
 		}
-
 		c.latestBlockNumber = int64(blockNumber)
+		c.logger.WithContext(ctx).Infof("chain [%s] latestBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 	}
 	// Apply the offset to begin verification starting from the latest unverified attestation
 	c.latestBlockNumber -= c.cf.Chain.GetOffsetBlock()
-	//c.latestBlockNumber = 58206220
+	//c.latestBlockNumber = 58773889
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
 	for {
@@ -399,7 +399,7 @@ func (c *Chain) beforeScanEvent(ctx context.Context, rewardClaimer common.Addres
 				return false
 			}
 		} else {
-			c.logger.WithContext(ctx).Infof("Update rewardClaimer: %s success.", rewardClaimer.Hex())
+			c.logger.WithContext(ctx).Infof("Current rewardClaimer: %s success.", rewardClaimer.Hex())
 		}
 		if int(c.cf.Wallet.CommissionRate) != int(commissionRate) {
 			// Send Transaction
@@ -408,9 +408,10 @@ func (c *Chain) beforeScanEvent(ctx context.Context, rewardClaimer common.Addres
 				return false
 			}
 		} else {
-			c.logger.WithContext(ctx).Infof("Update commissionRate: %d success.", commissionRate)
+			c.logger.WithContext(ctx).Infof("Current commissionRate: %d success.", commissionRate)
 		}
 		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) == strings.ToLower(rewardClaimer.Hex()) && int(c.cf.Wallet.CommissionRate) == int(commissionRate) {
+			c.logger.WithContext(ctx).Infof("node [%s] is online", nodeAddress.Hex())
 			return true
 		}
 	}

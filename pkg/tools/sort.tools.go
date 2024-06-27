@@ -1,16 +1,19 @@
 package tools
 
-func BinarySearch[T any](nums []T, target T, compare func(T, T) bool) int {
-	left, right := 0, len(nums)-1
-	for left <= right {
-		mid := left + (right-left)/2
-		if compare(nums[mid], target) {
-			return mid
-		} else if compare(target, nums[mid]) {
-			left = mid + 1
+type LessFunc[T any] func(a, b T) bool
+
+func BinarySearch[T any](slice []T, val T, less LessFunc[T]) int {
+	low := 0
+	high := len(slice) - 1
+	for low <= high {
+		mid := (low + high) / 2
+		if less(slice[mid], val) {
+			low = mid + 1
+		} else if less(val, slice[mid]) {
+			high = mid - 1
 		} else {
-			right = mid - 1
+			return mid // 找到目标值
 		}
 	}
-	return -1
+	return -1 // 未找到目标值
 }
