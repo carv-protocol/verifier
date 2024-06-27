@@ -31,7 +31,7 @@ contract:
 wallet:
   mode: 2
   private_key: ""
-  keystore_path: "/Users/shanshanramondy/Documents/golang/verifier/keystore/UTC--2024-06-26T10-45-14.060680000Z--8e6b900efb0fb7698ef3814269735cae1c03c450"
+  keystore_path: "/keystore/UTC--2024-06-26T10-45-14.060680000Z--0000000"
   keystore_password: "123456"
   reward_claimer_addr: "0x689d0b32Da0480095b7AE7b604f1b1997736B3F9"
   commission_rate: 100
