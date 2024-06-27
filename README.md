@@ -177,7 +177,7 @@ chain:
   chain_name: "arbitrum-sepolia"
   rpc_url: "https://sepolia-rollup.arbitrum.io/rpc"
   start_block: 0
-  offset_block: 3600 # opBNB block time: 1 sec. An offset of 3600 starts fetching blocks from 1 hours ago.
+  offset_block: 14400 # arbitrum block time: 0.25 sec. An offset of 14400 starts fetching blocks from 1 hours ago.
 contract:
   addr: "0xcb37148add8b8be58034a742495d935c78d9fd76"
   tee_addr : "0x7f57004E08ef1702b2b88b87ae01a561ae10F10e"
