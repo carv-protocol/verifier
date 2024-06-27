@@ -118,6 +118,12 @@
           "internalType": "address",
           "name": "node",
           "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "listIndex",
+          "type": "uint32"
         }
       ],
       "name": "NodeActivate",
@@ -159,6 +165,44 @@
         }
       ],
       "name": "NodeClear",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "node",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "int256",
+          "name": "selfReward",
+          "type": "int256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "delegationReward",
+          "type": "uint256"
+        }
+      ],
+      "name": "NodeConfirmReward",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "node",
+          "type": "address"
+        }
+      ],
+      "name": "NodeDailyActive",
       "type": "event"
     },
     {
@@ -300,6 +344,12 @@
         {
           "indexed": false,
           "internalType": "address",
+          "name": "slasher",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
           "name": "node",
           "type": "address"
         },
@@ -389,6 +439,12 @@
           "internalType": "uint256",
           "name": "amount",
           "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "valid",
+          "type": "bool"
         }
       ],
       "name": "TeeSlash",

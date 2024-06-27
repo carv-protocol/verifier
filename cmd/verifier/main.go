@@ -135,7 +135,7 @@ func main() {
 		panic("invalid commission rate")
 	}
 	bc.Wallet.RewardClaimerAddr = flagVar.RewardAddress
-	bc.Wallet.CommissionRate = int64(flagVar.CommissionRate)
+	bc.Wallet.CommissionRate = int64(flagVar.CommissionRate * 100) // 1% -> 100/10000
 
 	app, cleanup, err := wireApp(&bc, logFormat, logger)
 	if err != nil {

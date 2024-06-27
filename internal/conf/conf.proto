@@ -85,7 +85,7 @@ message Wallet {
   string keystore_password = 4;
 
   string reward_claimer_addr = 5;
-  int64 commissionRate = 6;
+  int64 commission_rate = 6;
 }
 
 message Signature {
