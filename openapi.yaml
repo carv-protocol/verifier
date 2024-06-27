@@ -6,6 +6,29 @@ info:
     title: Gassless API
     version: 0.0.1
 paths:
+    /explorer_alphanet/replaced_node:
+        get:
+            tags:
+                - Gassless
+            operationId: Gassless_ExplorerReplacedNode
+            parameters:
+                - name: verifierAddr
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ExplorerReplacedNodeResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /explorer_alphanet/send_tx_modify_commission_rate:
         post:
             tags:
@@ -128,6 +151,16 @@ paths:
                                 $ref: '#/components/schemas/Status'
 components:
     schemas:
+        ExplorerReplacedNodeResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: uint32
+                msg:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/ReplacedNode'
         ExplorerSendTxModifyCommissionRateRequest:
             type: object
             properties:
@@ -219,6 +252,11 @@ components:
                     description: The type of the serialized message.
             additionalProperties: true
             description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
+        ReplacedNode:
+            type: object
+            properties:
+                replacedAddr:
+                    type: string
         Response:
             type: object
             properties:

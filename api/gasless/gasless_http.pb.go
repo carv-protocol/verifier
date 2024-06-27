@@ -19,6 +19,7 @@ var _ = binding.EncodeURL
 
 const _ = http.SupportPackageIsVersion1
 
+const OperationGasslessExplorerReplacedNode = "/api.gasless.Gassless/ExplorerReplacedNode"
 const OperationGasslessExplorerSendTxModifyCommissionRate = "/api.gasless.Gassless/ExplorerSendTxModifyCommissionRate"
 const OperationGasslessExplorerSendTxNodeEnter = "/api.gasless.Gassless/ExplorerSendTxNodeEnter"
 const OperationGasslessExplorerSendTxNodeExit = "/api.gasless.Gassless/ExplorerSendTxNodeExit"
@@ -26,6 +27,7 @@ const OperationGasslessExplorerSendTxNodeReportVerification = "/api.gasless.Gass
 const OperationGasslessExplorerSendTxSetRewardClaimer = "/api.gasless.Gassless/ExplorerSendTxSetRewardClaimer"
 
 type GasslessHTTPServer interface {
+	ExplorerReplacedNode(context.Context, *ExplorerReplacedNodeRequest) (*ExplorerReplacedNodeResponse, error)
 	ExplorerSendTxModifyCommissionRate(context.Context, *ExplorerSendTxModifyCommissionRateRequest) (*Response, error)
 	ExplorerSendTxNodeEnter(context.Context, *ExplorerSendTxNodeEnterRequest) (*Response, error)
 	ExplorerSendTxNodeExit(context.Context, *ExplorerSendTxNodeExitRequest) (*Response, error)
@@ -40,6 +42,7 @@ func RegisterGasslessHTTPServer(s *http.Server, srv GasslessHTTPServer) {
 	r.POST("/explorer_alphanet/send_tx_modify_commission_rate", _Gassless_ExplorerSendTxModifyCommissionRate0_HTTP_Handler(srv))
 	r.POST("/explorer_alphanet/send_tx_set_reward_claimer", _Gassless_ExplorerSendTxSetRewardClaimer0_HTTP_Handler(srv))
 	r.POST("/explorer_alphanet/send_tx_node_report_verification", _Gassless_ExplorerSendTxNodeReportVerification0_HTTP_Handler(srv))
+	r.GET("/explorer_alphanet/replaced_node", _Gassless_ExplorerReplacedNode0_HTTP_Handler(srv))
 }
 
 func _Gassless_ExplorerSendTxNodeEnter0_HTTP_Handler(srv GasslessHTTPServer) func(ctx http.Context) error {
@@ -152,7 +155,27 @@ func _Gassless_ExplorerSendTxNodeReportVerification0_HTTP_Handler(srv GasslessHT
 	}
 }
 
+func _Gassless_ExplorerReplacedNode0_HTTP_Handler(srv GasslessHTTPServer) func(ctx http.Context) error {
+	return func(ctx http.Context) error {
+		var in ExplorerReplacedNodeRequest
+		if err := ctx.BindQuery(&in); err != nil {
+			return err
+		}
+		http.SetOperation(ctx, OperationGasslessExplorerReplacedNode)
+		h := ctx.Middleware(func(ctx context.Context, req interface{}) (interface{}, error) {
+			return srv.ExplorerReplacedNode(ctx, req.(*ExplorerReplacedNodeRequest))
+		})
+		out, err := h(ctx, &in)
+		if err != nil {
+			return err
+		}
+		reply := out.(*ExplorerReplacedNodeResponse)
+		return ctx.Result(200, reply)
+	}
+}
+
 type GasslessHTTPClient interface {
+	ExplorerReplacedNode(ctx context.Context, req *ExplorerReplacedNodeRequest, opts ...http.CallOption) (rsp *ExplorerReplacedNodeResponse, err error)
 	ExplorerSendTxModifyCommissionRate(ctx context.Context, req *ExplorerSendTxModifyCommissionRateRequest, opts ...http.CallOption) (rsp *Response, err error)
 	ExplorerSendTxNodeEnter(ctx context.Context, req *ExplorerSendTxNodeEnterRequest, opts ...http.CallOption) (rsp *Response, err error)
 	ExplorerSendTxNodeExit(ctx context.Context, req *ExplorerSendTxNodeExitRequest, opts ...http.CallOption) (rsp *Response, err error)
@@ -166,6 +189,19 @@ type GasslessHTTPClientImpl struct {
 
 func NewGasslessHTTPClient(client *http.Client) GasslessHTTPClient {
 	return &GasslessHTTPClientImpl{client}
+}
+
+func (c *GasslessHTTPClientImpl) ExplorerReplacedNode(ctx context.Context, in *ExplorerReplacedNodeRequest, opts ...http.CallOption) (*ExplorerReplacedNodeResponse, error) {
+	var out ExplorerReplacedNodeResponse
+	pattern := "/explorer_alphanet/replaced_node"
+	path := binding.EncodeURL(pattern, in, true)
+	opts = append(opts, http.Operation(OperationGasslessExplorerReplacedNode))
+	opts = append(opts, http.PathTemplate(pattern))
+	err := c.cc.Invoke(ctx, "GET", path, nil, &out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
 }
 
 func (c *GasslessHTTPClientImpl) ExplorerSendTxModifyCommissionRate(ctx context.Context, in *ExplorerSendTxModifyCommissionRateRequest, opts ...http.CallOption) (*Response, error) {
