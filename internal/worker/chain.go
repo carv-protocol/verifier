@@ -110,6 +110,7 @@ func NewChain(
 		confirmVrfNodeChan: make(chan confirmVrfNodesInfo),
 		verifyResultMap:    tools.NewSafeMap(),
 		errChan:            make(chan error),
+		latestBlockNumber:  bootstrap.Chain.StartBlock,
 		cache:              cacheIns,
 		gaslessClient:      gaslessClient,
 	}, nil

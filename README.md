@@ -65,10 +65,10 @@ If you want to pass the private key through startup parameters, you need to set 
 
 ```shell
 # Pass the private key in clear text
-./verifier -conf ../configs/config.yaml -private-key <Your Private Key> -reward-address <Your Reward Address> -commission-rate <Your Commission Rate>
+./verifier -private-key <Your Private Key> -reward-address <Your Reward Address> -commission-rate <Your Commission Rate>
 
 # By specifying keystore
-./verifier -conf ../configs/config.yaml -keystore-path <Path to keystore file> -keystore-password <keystore password> -reward-address <Your Reward Address> -commission-rate <Your Commission Rate>
+./verifier -keystore-path <Path to keystore file> -keystore-password <keystore password> -reward-address <Your Reward Address> -commission-rate <Your Commission Rate>
 ```
 
 In order to facilitate user operation, verifier provides a tool to generate a new keystore, run

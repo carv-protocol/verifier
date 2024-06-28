@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
+	"io"
+	originHttp "net/http"
 	"os"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/config"
 	"github.com/go-kratos/kratos/v2/config/file"
@@ -15,6 +17,7 @@ import (
 	"github.com/go-kratos/kratos/v2/transport/http"
 	_ "go.uber.org/automaxprocs"
 
+	commonInternal "github.com/carv-protocol/verifier/internal/common"
 	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/internal/key_manager"
 	"github.com/carv-protocol/verifier/internal/worker"
@@ -45,7 +48,7 @@ type FlagVar struct {
 }
 
 func init() {
-	flag.StringVar(&flagVar.Conf, "conf", "configs", "config path, eg: -conf config.yaml")
+	flag.StringVar(&flagVar.Conf, "conf", "", "config path, eg: -conf config.yaml")
 	flag.StringVar(&flagVar.PrivateKey, "private-key", "", "private key, eg: -private-key 9a8bd8c....21dec")
 	flag.StringVar(&flagVar.KeystorePath, "keystore-path", "", "keystore path, eg: -keystore-path . default: .")
 	flag.StringVar(&flagVar.KeystorePassword, "keystore-password", "", "keystore password, eg: -keystore-password 123456")
@@ -78,13 +81,16 @@ func main() {
 	}
 
 	// By default use local path, easier for executable file
-	if flagVar.Conf == "" {
-		flagVar.Conf = "config_local.yaml"
+	configFile := ""
+	if flagVar.Conf != "" {
+		configFile = flagVar.Conf
+	} else {
+		configFile = fetchConfigFromURL(commonInternal.BASE_URl + "config_local.yaml")
 	}
-
+	fmt.Println("config file:", configFile)
 	c := config.New(
 		config.WithSource(
-			file.NewSource(flagVar.Conf),
+			file.NewSource(configFile),
 		),
 	)
 	defer c.Close()
@@ -146,4 +152,31 @@ func main() {
 	if err := app.Run(); err != nil {
 		panic(err)
 	}
+}
+
+func fetchConfigFromURL(url string) string {
+	resp, err := originHttp.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(resp.Body)
+
+	data, err := io.ReadAll(resp.Body)
+
+	// save as temp
+	tmpFile, err := os.CreateTemp("", "config_local*.yaml")
+	if err != nil {
+		panic(err)
+	}
+	defer tmpFile.Close()
+	if _, err := tmpFile.Write(data); err != nil {
+		panic(err)
+	}
+	return tmpFile.Name()
+
 }
