@@ -7,7 +7,7 @@ server:
     addr: 0.0.0.0:9000
     timeout: 1s
 chain:
-  chain_id: 42161
+  chain_id: 421614
   chain_name: "arbitrum"
   rpc_url: "https://arb1.arbitrum.io/rpc"
   start_block: 0
