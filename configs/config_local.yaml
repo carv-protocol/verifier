@@ -29,12 +29,12 @@ contract:
 #  reward_claimer_addr: "0x689d0b32Da0480095b7AE7b604f1b1997736B3F9"
 #  commission_rate: 100
 wallet:
-  mode: 2
+  mode: 0
   private_key: ""
-  keystore_path: "/keystore/UTC--2024-06-26T10-45-14.060680000Z--0000000"
-  keystore_password: "123456"
-  reward_claimer_addr: "0x689d0b32Da0480095b7AE7b604f1b1997736B3F9"
-  commission_rate: 100
+  keystore_path: ""
+  keystore_password: ""
+  reward_claimer_addr: ""
+  commission_rate: 0
 signature:
   domain_name: "ProtocolService"
   domain_version: "1.0.0"
