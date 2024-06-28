@@ -113,25 +113,25 @@ Then run
 
 One of the quickest ways to run verifier is by using Docker:
 
-#### Use Private Key (mode = 0)
+#### Use Private Key (mode = 1)
 
 ##### Update config_docker.yaml
 > Update your private_key and run :
 ```yaml
-......
 wallet:
   # wallet mode, by which way to pass the private key
   # 0: through startup parameters
   # 1: through plain text private key in config file
   # 2: through path and password of the keystore in config file
-  mode: 0
+  mode: 1
   # plain text private key, needed when mode is 1
   private_key: "99a038e9d345d0b12130b3b1fb003bf8f2d3a5c27ce2a800bbb1608efff6c591"
   # path of the keystore, needed when mode is 2
   keystore_path: ""
   # password of the keystore, needed when mode is 2
   keystore_password: ""
-......
+  reward_claimer_addr: "0x689d0b32Da0480095b7AE7b604f1b1997736B3F9"
+  commission_rate: 100
 ```
 
 ```shell
@@ -147,7 +147,6 @@ After running the command, you can run verifier by following the steps below.
 ##### update config_docker.yaml
 Update your keystore_path and keystore_password and run :
 ```yaml
-......
 
 wallet:
   # wallet mode, by which way to pass the private key
@@ -161,7 +160,8 @@ wallet:
   keystore_path: "/data/conf/xxxx/UTC--2021-09-29T07-00-00.000000000Z--xxxx"
   # password of the keystore, needed when mode is 2
   keystore_password: "123456"
-......
+  reward_claimer_addr: "0x689d0b32Da0480095b7AE7b604f1b1997736B3F9"
+  commission_rate: 100
 
 ```
 
@@ -169,22 +169,21 @@ wallet:
 docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf -v /<Path To Keystore direction>:/data/keystore carvprotocol/verifier
 ```
 
+
 ### Configuration
 
 ```yaml
 chain:
-  chain_id: 421614
-  chain_name: "arbitrum-sepolia"
-  rpc_url: "https://sepolia-rollup.arbitrum.io/rpc"
+  chain_id: 42161
+  chain_name: "arbitrum"
+  rpc_url: "https://arb1.arbitrum.io/rpc"
   start_block: 0
   offset_block: 14400 # arbitrum block time: 0.25 sec. An offset of 14400 starts fetching blocks from 1 hours ago.
 contract:
-  addr: "0xcb37148add8b8be58034a742495d935c78d9fd76"
+  addr: "0xd35AF24099f6BAd4690eD6E858273580e2b1954A"
   tee_addr : "0x7f57004E08ef1702b2b88b87ae01a561ae10F10e"
   topic1: "0x89a3b784b99180438f3b2027aa89e97c3c3ed66e8dc78a555d7013b39caf1a89"
   topic2: "0x455929120054502ca2ea8194b26e7bb3acb631d30177f6881ffa70581abd4a13"
-settings_contract:
-  addr: "0xBeFAB38c0Cf603Ca59fe064fc7B3c2BcA726A28F"
 #wallet:
   ## wallet mode, by which way to pass the private key
   ## 0: through startup parameters
@@ -200,7 +199,7 @@ wallet:
   mode: 2
   private_key: ""
   keystore_path: "./keystore/UTC--2024-06-25T12-01-01.663731000Z--031cff11b035aa5f5189f163c1fc937bf0be235c"
-  keystore_password: "150318"
+  keystore_password: "123456"
   reward_claimer_addr: "0x689d0b32Da0480095b7AE7b604f1b1997736B3F9"
   commission_rate: 100
 signature:
