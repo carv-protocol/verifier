@@ -73,13 +73,6 @@ func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int)
 
 // Node Enter by service
 func NodeEnterByGaslessService(ctx context.Context, c *Chain, replacedNode common.Address, expiredAt *big.Int) (bool, error) {
-	_, found := c.cache.Get(common2.NODE_ENTRY_BY_GASLESS_SERVICE)
-	if found {
-		c.logger.WithContext(ctx).Errorf("NodeEnterByGaslessService is in progress")
-		return false, fmt.Errorf("NodeEnterByGaslessService is in progress")
-	}
-	c.logger.WithContext(ctx).Infof("NodeEnterByGaslessService start........")
-	c.cache.Set(common2.NODE_ENTRY_BY_GASLESS_SERVICE, true, common2.CACHE_EXPIRED_TIME*time.Second)
 
 	// Call Gasless serivice
 	typedData := apitypes.TypedData{
@@ -139,7 +132,7 @@ func NodeEnterByGaslessService(ctx context.Context, c *Chain, replacedNode commo
 	}
 	c.logger.WithContext(ctx).Infof("NodeEnterByGaslessService success %s", enter)
 	if enter.Code != 0 {
-		return false, fmt.Errorf("NodeEnterByGaslessService failed %s", enter.Msg)
+		panic(fmt.Errorf("NodeEnterByGaslessService failed %s", enter.Msg))
 	}
 	return true, err
 
@@ -147,14 +140,6 @@ func NodeEnterByGaslessService(ctx context.Context, c *Chain, replacedNode commo
 
 // Update node commission rate by service
 func UpdateNodeCommissionRateByGaslessService(ctx context.Context, c *Chain, commissionRate uint32, expiredAt *big.Int) (bool, error) {
-	_, found := c.cache.Get(common2.UPDATE_NODE_COMMISSION_RATE_BY_GASLESS_SERVICE)
-	if found {
-		c.logger.WithContext(ctx).Errorf("UpdateNodeCommissionRateByGaslessService is in progress")
-		return false, fmt.Errorf("UpdateNodeCommissionRateByGaslessService is in progress")
-	}
-	c.logger.WithContext(ctx).Infof("UpdateNodeCommissionRateByGaslessService start........")
-	c.cache.Set(common2.UPDATE_NODE_COMMISSION_RATE_BY_GASLESS_SERVICE, true, common2.CACHE_EXPIRED_TIME*time.Second)
-
 	// Call Gasless serivice
 	typedData := apitypes.TypedData{
 		Types: apitypes.Types{
@@ -212,21 +197,13 @@ func UpdateNodeCommissionRateByGaslessService(ctx context.Context, c *Chain, com
 		return false, err
 	}
 	if setRes.Code != 0 {
-		return false, fmt.Errorf("UpdateNodeCommissionRateByGaslessService failed %s", setRes.Msg)
+		panic(fmt.Errorf("UpdateNodeCommissionRateByGaslessService failed %s", setRes.Msg))
 	}
 	return true, nil
 }
 
 // Update node reward claimer by service
 func UpdateNodeRewardClaimerByGaslessService(ctx context.Context, c *Chain, rewardClaimer common.Address, expiredAt *big.Int) (bool, error) {
-	_, found := c.cache.Get(common2.UPDATE_NODE_REWARD_CLAIMER_BY_GASLESS_SERVICE)
-	if found {
-		c.logger.WithContext(ctx).Errorf("UpdateNodeRewardClaimerByGaslessService is in progress")
-		return false, fmt.Errorf("UpdateNodeRewardClaimerByGaslessService is in progress")
-	}
-	c.logger.WithContext(ctx).Infof("UpdateNodeRewardClaimerByGaslessService start........")
-	c.cache.Set(common2.UPDATE_NODE_REWARD_CLAIMER_BY_GASLESS_SERVICE, true, common2.CACHE_EXPIRED_TIME*time.Second)
-	// TODO Call Gasless serivice
 	typedData := apitypes.TypedData{
 		Types: apitypes.Types{
 			"EIP712Domain": {
@@ -284,7 +261,7 @@ func UpdateNodeRewardClaimerByGaslessService(ctx context.Context, c *Chain, rewa
 		return false, err
 	}
 	if setRes.Code != 0 {
-		return false, fmt.Errorf("UpdateNodeRewardClaimerByGaslessService failed %s", setRes.Msg)
+		panic(fmt.Errorf("UpdateNodeRewardClaimerByGaslessService failed %s", setRes.Msg))
 	}
 	return true, nil
 }
