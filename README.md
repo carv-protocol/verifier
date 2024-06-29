@@ -135,7 +135,7 @@ wallet:
 ```
 
 ```shell
-docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf carvprotocol/verifier
+docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf carvprotocol/verifier:alphanet
 ```
 
 #### Use Keystore (mode = 2)
@@ -166,7 +166,7 @@ wallet:
 ```
 
 ```shell
-docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf -v /<Path To Keystore direction>:/data/keystore carvprotocol/verifier
+docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf -v /<Path To Keystore direction>:/data/keystore carvprotocol/verifier:alphanet
 ```
 
 
@@ -207,7 +207,7 @@ signature:
   domain_version: "1.0.0"
   expired_time: 3600
 gasless_service:
-  url: "https://dev-interface.carv.io"
+  url: "https://interface.carv.io"
 ```
 
 ## Contribution
