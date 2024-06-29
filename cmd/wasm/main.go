@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/carv-protocol/verifier/pkg/dcap"
 	"syscall/js"
+
+	"github.com/carv-protocol/verifier/pkg/dcap"
 )
 
 func execCallback(args []js.Value, value interface{}, e error) {
 	var last = args[len(args)-1]
 	if last.Type() == js.TypeFunction {
-		last.Invoke(e, value)
+		last.Invoke(e.Error(), value)
 	} else {
 		fmt.Println("no callback")
 	}
@@ -47,9 +48,6 @@ func VerifyAttestation(this js.Value, args []js.Value) interface{} {
 	)
 
 	result, err := dcap.VerifyAttestation(message, identityJson, tcbJson, trustedJson)
-	if err != nil {
-		panic(err)
-	}
 	println(args, result)
 	execCallback(args, result, err)
 	return nil
