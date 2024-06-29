@@ -53,8 +53,9 @@ type Chain struct {
 }
 
 type confirmVrfNodesInfo struct {
-	nodeId    uint32
-	requestId *big.Int
+	nodeId       uint32
+	vrfNodeIndex uint32
+	requestId    *big.Int
 }
 
 func NewChain(
@@ -198,7 +199,7 @@ func (c *Chain) submitVerifyResult(ctx context.Context) {
 				if !attestationsObj.(verifyResult).result {
 					resultEnum = 1
 				}
-				_, err := NodeReportVerificationBatchByGaslessService(ctx, c, attestationsObj.(verifyResult).attestationID, uint8(resultEnum), c.nodeInf.nodeListIndex)
+				_, err := NodeReportVerificationBatchByGaslessService(ctx, c, attestationsObj.(verifyResult).attestationID, uint8(resultEnum), cvn.vrfNodeIndex)
 				if err != nil {
 					return
 				}
@@ -451,10 +452,4 @@ func (c *Chain) GetTransactionConfig(ctx context.Context) (*bind.TransactOpts, e
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.GasPrice = gasPrice
 	return auth, nil
-}
-
-// TODO Get Information from gasless service
-func (c *Chain) isNodeCountLimitation() (bool, error) {
-
-	return true, nil
 }

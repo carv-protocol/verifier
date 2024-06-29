@@ -3,7 +3,6 @@ package worker
 import (
 	"context"
 	"github.com/pkg/errors"
-	"sort"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -78,23 +77,22 @@ func (l *LogFilter) ConfirmVrfNodesLogFilter(ctx context.Context, c *Chain, cLog
 		VrfChosen:       unpackedData.VrfChosen,
 		Deadline:        unpackedData.Deadline,
 	}
-	// check whether the vrf node is in the vrf node list
-	// vrfChosen is node id
-	sort.Slice(unpackedData.VrfChosen, func(i, j int) bool {
-		return unpackedData.VrfChosen[i] < (unpackedData.VrfChosen[j])
-	})
-	//
-	searchResBool := tools.BinarySearch(unpackedData.VrfChosen, c.nodeInf.nodeId, func(u uint32, u2 uint32) bool {
-		return u < u2
-	})
-	c.logger.WithContext(ctx).Error("searchResBool: %v", searchResBool)
-	if searchResBool == -1 {
+	searchNodeIndex := -1
+	for i := 0; i < len(unpackedData.VrfChosen); i++ {
+		if unpackedData.VrfChosen[i] == c.nodeInf.nodeId {
+			searchNodeIndex = i
+			break
+		}
+	}
+	c.logger.WithContext(ctx).Error("searchResBool: %v", searchNodeIndex)
+	if searchNodeIndex == -1 {
 		return nil
 	}
 
 	c.confirmVrfNodeChan <- confirmVrfNodesInfo{
-		nodeId:    c.nodeInf.nodeId,
-		requestId: unpackedData.RequestId,
+		nodeId:       c.nodeInf.nodeId,
+		vrfNodeIndex: uint32(searchNodeIndex),
+		requestId:    unpackedData.RequestId,
 	}
 
 	c.logger.WithContext(ctx).Infof("logInfo: %+v", logInfo)
