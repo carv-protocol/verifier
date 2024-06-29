@@ -139,7 +139,10 @@ func NodeEnterByGaslessService(ctx context.Context, c *Chain, replacedNode commo
 	}
 	c.logger.WithContext(ctx).Infof("NodeEnterByGaslessService success %s", enter)
 	if enter.Code != 0 {
-		return false, fmt.Errorf("NodeEnterByGaslessService failed %s", enter.Msg)
+		if enter.Msg == common2.ENTER_NO_WEIGHTS {
+			panic(enter.Msg)
+		}
+		return false, fmt.Errorf("%s", enter.Msg)
 	}
 	return true, err
 
