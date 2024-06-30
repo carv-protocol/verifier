@@ -84,7 +84,8 @@ func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int)
 		return false, fmt.Errorf("NodeExitByGaslessService failed")
 	}
 	if exit.Code != 0 {
-		panic(fmt.Errorf("NodeExitByGaslessService failed %s", exit.Msg))
+		c.logger.WithContext(ctx).Errorf("NodeExitByGaslessService failed %s", exit.Msg)
+		os.Exit(0)
 	}
 	c.logger.WithContext(ctx).Infof("NodeExitByGaslessService success %s", exit)
 	return true, err
