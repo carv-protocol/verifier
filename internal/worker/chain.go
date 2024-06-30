@@ -162,8 +162,13 @@ func (c *Chain) Stop(ctx context.Context) error {
 	c.logger.WithContext(ctx).Infof("chain [%s] stopping", c.cf.Chain.ChainName)
 
 	close(c.stopChan)
-
 	c.logger.WithContext(ctx).Infof("chain [%s] stopped", c.cf.Chain.ChainName)
+	// exit node by gasless
+	exitRes, err := NodeExitByGaslessService(ctx, c, big.NewInt(1))
+	if err != nil {
+		return errors.Wrap(err, "exit node by gasless error")
+	}
+	c.logger.WithContext(ctx).Infof("exitRes: %v", exitRes)
 
 	return nil
 }

@@ -19,11 +19,11 @@ import (
 )
 
 // Node Exit by service
-func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int) {
+func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int) (bool, error) {
 	_, found := c.cache.Get(common2.NODE_EXIT_BY_GASLESS_SERVICE)
 	if found {
 		c.logger.WithContext(ctx).Errorf("NodeExitByGaslessService is in progress")
-		return
+		return false, fmt.Errorf("NodeExitByGaslessService is in progress")
 	}
 	c.logger.WithContext(ctx).Infof("NodeExitByGaslessService start........")
 	c.cache.Set(common2.NODE_EXIT_BY_GASLESS_SERVICE, true, common2.CACHE_EXPIRED_TIME*time.Second)
@@ -64,11 +64,24 @@ func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int)
 
 	v, r, s, err := tools.SignTypedDataAndSplit(typedData, c.verifierPrivKey)
 	if err != nil {
-		return
+		return false, err
 	}
-	// Send signature
-	fmt.Println(v, r, s)
-
+	nodeExitRequest := &gasless.ExplorerSendTxNodeExitRequest{
+		Signer:    c.verifierAddress.String(),
+		ExpiredAt: expiredAt.Uint64(),
+		V:         uint32(v),
+		R:         hex.EncodeToString(r[:]),
+		S:         hex.EncodeToString(s[:]),
+	}
+	exit, err := c.gaslessClient.ExplorerSendTxNodeExit(ctx, nodeExitRequest)
+	if err != nil {
+		return false, err
+	}
+	c.logger.WithContext(ctx).Infof("NodeExitByGaslessService success %s", exit)
+	if exit.Code != 0 {
+		panic(fmt.Errorf("NodeExitByGaslessService failed %s", exit.Msg))
+	}
+	return true, err
 }
 
 // Node Enter by service
