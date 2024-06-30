@@ -157,7 +157,10 @@ func (c *Chain) Stop(ctx context.Context) error {
 
 	c.logger.WithContext(ctx).Infof("chain [%s] stopped", c.cf.Chain.ChainName)
 	// exit node by gasless
-	exitRes, err := NodeExitByGaslessService(ctx, c, big.NewInt(1))
+	// Get the current timestamp
+	timestamp := big.NewInt(time.Now().Unix())
+	expiredTime := new(big.Int).Add(timestamp, big.NewInt(c.cf.Signature.ExpiredTime))
+	exitRes, err := NodeExitByGaslessService(ctx, c, expiredTime)
 	if err != nil {
 		return errors.Wrap(err, "exit node by gasless error")
 	}
