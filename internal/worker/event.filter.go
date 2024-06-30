@@ -18,16 +18,16 @@ func (l *LogFilter) NodeReportVerificationBatchLogFilter(ctx context.Context, c 
 	if err != nil {
 		return errors.Wrap(err, "contract ParseReportTeeAttestation error")
 	}
-
-	logInfo := TeeReportAttestationEvent{
-		BlockNumber:       cLog.BlockNumber,
-		ContractAddress:   cLog.Address,
-		TxHash:            cLog.TxHash,
-		TxIndex:           unpackedData.Raw.TxIndex,
-		AttestationIDs:    unpackedData.AttestationIDs,
-		VerificationInfos: unpackedData.AttestationInfos,
-		RequestId:         unpackedData.RequestID,
-	}
+	//
+	//logInfo := TeeReportAttestationEvent{
+	//	BlockNumber:       cLog.BlockNumber,
+	//	ContractAddress:   cLog.Address,
+	//	TxHash:            cLog.TxHash,
+	//	TxIndex:           unpackedData.Raw.TxIndex,
+	//	AttestationIDs:    unpackedData.AttestationIDs,
+	//	VerificationInfos: unpackedData.AttestationInfos,
+	//	RequestId:         unpackedData.RequestID,
+	//}
 
 	// Verify attestation
 	for i := 0; i < len(unpackedData.AttestationIDs); i++ {
@@ -48,12 +48,18 @@ func (l *LogFilter) NodeReportVerificationBatchLogFilter(ctx context.Context, c 
 				err.Error(),
 			)
 		}
-		c.verifyResultMap.Set(unpackedData.RequestID.String(), verifyResult{
-			attestationID: attestationID,
-			result:        result,
-		})
 
-		c.logger.WithContext(ctx).Infof("logInfo: %+v", logInfo)
+		c.verifyResultList = append(c.verifyResultList, verifyResult{
+			BlockNumber:     cLog.BlockNumber,
+			ContractAddress: cLog.Address,
+			TxHash:          cLog.TxHash,
+			TxIndex:         unpackedData.Raw.TxIndex,
+			requestId:       unpackedData.RequestID,
+			attestationID:   attestationID,
+			result:          result,
+			isReported:      false,
+		})
+		c.logger.WithContext(ctx).Infof("verify %v result: %v", attestationID, result)
 	}
 
 	return nil

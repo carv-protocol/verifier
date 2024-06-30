@@ -22,7 +22,6 @@ import (
 	"github.com/carv-protocol/verifier/internal/conf"
 	"github.com/carv-protocol/verifier/internal/key_manager"
 	"github.com/carv-protocol/verifier/pkg/contract"
-	"github.com/carv-protocol/verifier/pkg/tools"
 )
 
 const (
@@ -43,7 +42,7 @@ type Chain struct {
 	verifierPrivKey            *ecdsa.PrivateKey
 	nodeInf                    nodeInf
 	stopChan                   chan struct{}
-	verifyResultMap            *tools.SafeMap
+	verifyResultList           []verifyResult
 	confirmVrfNodeChan         chan confirmVrfNodesInfo
 	errChan                    chan error
 	latestBlockNumber          int64
@@ -109,7 +108,7 @@ func NewChain(
 		},
 		stopChan:           make(chan struct{}),
 		confirmVrfNodeChan: make(chan confirmVrfNodesInfo),
-		verifyResultMap:    tools.NewSafeMap(),
+		verifyResultList:   make([]verifyResult, 0),
 		errChan:            make(chan error),
 		latestBlockNumber:  bootstrap.Chain.StartBlock,
 		cache:              cacheIns,
@@ -129,7 +128,8 @@ func (c *Chain) Start(ctx context.Context) error {
 	}
 	// Apply the offset to begin verification starting from the latest unverified attestation
 	c.latestBlockNumber -= c.cf.Chain.GetOffsetBlock()
-	//c.latestBlockNumber = 58773889
+	//c.latestBlockNumber = 58784070
+	c.latestBlockNumber = 59109506
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
 	nodeInfos, err := c.protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, c.verifierAddress)
@@ -193,21 +193,23 @@ func (c *Chain) submitVerifyResult(ctx context.Context) {
 		select {
 		case cvn := <-c.confirmVrfNodeChan:
 			go func(cvn confirmVrfNodesInfo) {
-				// get attestations
-				attestationsObj, _ := c.verifyResultMap.Get(cvn.requestId.String())
-				// Send ConfirmVrfNodes
-				resultEnum := 0
-				if !attestationsObj.(verifyResult).result {
-					resultEnum = 1
-				}
-				_, err := NodeReportVerificationBatchByGaslessService(ctx, c, attestationsObj.(verifyResult).attestationID, uint8(resultEnum), cvn.vrfNodeIndex)
-				if err != nil {
-					return
-				}
+				for i := 0; i < len(c.verifyResultList); i++ {
+					if c.verifyResultList[i].requestId.Cmp(cvn.requestId) == 0 && !c.verifyResultList[i].isReported {
+						resultEnum := 0
+						if !c.verifyResultList[i].result {
+							resultEnum = 1
+						}
+						reportRes, err := NodeReportVerificationBatchByGaslessService(ctx, c, c.verifyResultList[i].attestationID, uint8(resultEnum), cvn.vrfNodeIndex)
+						if err != nil {
+							continue
+						}
+						if reportRes {
+							c.verifyResultList[i].isReported = true
+						}
+					}
+					c.logger.WithContext(ctx).Infof("attestation Sending: %s", c.verifyResultList[i].attestationID)
 
-				// c.errChan <- err
-				c.logger.WithContext(ctx).Infof("attestation Sending: %s", attestationsObj.(verifyResult).attestationID)
-				defer c.verifyResultMap.Delete(cvn.requestId.String())
+				}
 			}(cvn)
 
 		case <-c.stopChan:
@@ -380,38 +382,29 @@ func (c *Chain) beforeScanEvent(ctx context.Context, rewardClaimer common.Addres
 		replaceNode := common.HexToAddress(replacedNodeResp.Data.ReplacedAddr)
 		// Send Transaction
 		if isGasless {
-			_, err = NodeEnterByGaslessService(context.Background(), c, replaceNode, expiredTime)
+			enterRes, err := NodeEnterByGaslessService(context.Background(), c, replaceNode, expiredTime)
 			if err != nil {
 				c.logger.Errorf("NodeEnterByGaslessService error: %s", err.Error())
-				return false
 			}
-		} else {
-			auth, _ := c.GetTransactionConfig(context.Background())
-			enter, err := NodeEnter(ctx, c, auth, replaceNode)
-			if err != nil {
-				c.logger.WithContext(ctx).Errorf("NodeEnter error: %s", err.Error())
-			}
-			c.logger.WithContext(ctx).Infof("NodeEnter success: %s", enter.Hex())
+			c.logger.WithContext(ctx).Infof("enterRes: %v", enterRes)
+			return enterRes
 		}
-		return false
 	} else {
 		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()) {
 			// Send Transaction
-			_, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
+			updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
 			if err2 != nil {
-				return false
+				c.logger.WithContext(ctx).Errorf("UpdateNodeRewardClaimerByGaslessService error: %s", err2.Error())
 			}
-		} else {
-			c.logger.WithContext(ctx).Infof("Current rewardClaimer: %s success.", rewardClaimer.Hex())
+			return updateRewardClaimerRes
 		}
 		if int(c.cf.Wallet.CommissionRate) != int(commissionRate) {
 			// Send Transaction
-			_, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
+			updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
 			if err != nil {
-				return false
+				c.logger.WithContext(ctx).Errorf("UpdateNodeCommissionRateByGaslessService error: %s", err.Error())
 			}
-		} else {
-			c.logger.WithContext(ctx).Infof("Current commissionRate: %d success.", commissionRate)
+			return updateNodeCommissionRateRes
 		}
 		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) == strings.ToLower(rewardClaimer.Hex()) && int(c.cf.Wallet.CommissionRate) == int(commissionRate) {
 			c.logger.WithContext(ctx).Infof("node [%s] is online", nodeAddress.Hex())

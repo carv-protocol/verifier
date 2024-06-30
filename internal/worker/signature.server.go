@@ -337,12 +337,6 @@ func UpdateNodeRewardClaimerByGaslessService(ctx context.Context, c *Chain, rewa
 
 // Node Report Verification Batch by service
 func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, attestationId [32]byte, result uint8, index uint32) (bool, error) {
-	_, found := c.cache.Get(common2.NODE_REPORT_VERIFICATION_BATCH_BY_GASLESS_SERVICE)
-	if found {
-		c.logger.WithContext(ctx).Errorf("NodeReportVerificationBatchByGaslessService is in progress")
-		return false, fmt.Errorf("NodeReportVerificationBatchByGaslessService is in progress")
-
-	}
 	c.logger.WithContext(ctx).Infof("NodeReportVerificationBatchByGaslessService start........")
 	c.cache.Set(common2.NODE_REPORT_VERIFICATION_BATCH_BY_GASLESS_SERVICE, true, common2.CACHE_EXPIRED_TIME*time.Second)
 	// Call Gasless serivice
@@ -410,6 +404,7 @@ func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, 
 		c.logger.WithContext(ctx).Infof("NodeReportVerificationBatchByGaslessService try %d", i+1)
 		reportVerificationRes, reportVerificationErr = c.gaslessClient.ExplorerSendTxNodeReportVerification(ctx, reportVerificationRequest)
 		if reportVerificationErr == nil {
+			c.logger.WithContext(ctx).Infof("NodeReportVerificationBatchByGaslessService failed %s", reportVerificationRes)
 			break
 		}
 		time.Sleep(2 * time.Second)

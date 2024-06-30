@@ -13,8 +13,14 @@ type nodeInf struct {
 	commissionRate uint32
 }
 type verifyResult struct {
-	attestationID [32]byte
-	result        bool
+	BlockNumber     uint64
+	ContractAddress common.Address
+	TxHash          common.Hash
+	TxIndex         uint
+	requestId       *big.Int
+	attestationID   [32]byte
+	result          bool
+	isReported      bool
 }
 
 type TeeReportAttestationEvent struct {
