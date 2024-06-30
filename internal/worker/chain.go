@@ -132,28 +132,20 @@ func (c *Chain) Start(ctx context.Context) error {
 	//c.latestBlockNumber = 58773889
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
-	for {
-		// check again
-		time.Sleep(2 * time.Second)
-		nodeInfos, err := c.protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, c.verifierAddress)
-		if err != nil {
-			c.logger.Errorf("NodeInfos error: %s", err.Error())
-		}
-		c.logger.WithContext(ctx).Infof("nodeInfos: %v", nodeInfos)
-		if c.beforeScanEvent(ctx, nodeInfos.Claimer, nodeInfos.CommissionRate, true) {
-			break
-		}
+	nodeInfos, err := c.protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, c.verifierAddress)
+	if err != nil {
+		c.logger.Errorf("NodeInfos error: %s", err.Error())
 	}
-
-	c.logger.WithContext(ctx).Infof("chain [%s] beforeScanEvent success", c.cf.Chain.ChainName)
-	// Monitor and verify on-chain TEE attestations
-	go c.queryAndVerify(ctx)
-
-	// submit verify result to gasless service
-	go c.submitVerifyResult(ctx)
-
-	// Monitor errors arising from querying and posting processes
-	go c.monitorErrors(ctx)
+	c.logger.WithContext(ctx).Infof("nodeInfos: %v", nodeInfos)
+	if c.beforeScanEvent(ctx, nodeInfos.Claimer, nodeInfos.CommissionRate, true) {
+		c.logger.WithContext(ctx).Infof("chain [%s] beforeScanEvent success", c.cf.Chain.ChainName)
+		// Monitor and verify on-chain TEE attestations
+		go c.queryAndVerify(ctx)
+		// submit verify result to gasless service
+		go c.submitVerifyResult(ctx)
+		// Monitor errors arising from querying and posting processes
+		go c.monitorErrors(ctx)
+	}
 
 	return nil
 }
@@ -162,6 +154,7 @@ func (c *Chain) Stop(ctx context.Context) error {
 	c.logger.WithContext(ctx).Infof("chain [%s] stopping", c.cf.Chain.ChainName)
 
 	close(c.stopChan)
+
 	c.logger.WithContext(ctx).Infof("chain [%s] stopped", c.cf.Chain.ChainName)
 	// exit node by gasless
 	exitRes, err := NodeExitByGaslessService(ctx, c, big.NewInt(1))
