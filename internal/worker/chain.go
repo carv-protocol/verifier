@@ -24,11 +24,6 @@ import (
 	"github.com/carv-protocol/verifier/pkg/contract"
 )
 
-const (
-	// Maximum number of blocks per log query
-	maxBlocksPerQuery = 100
-)
-
 var (
 	nonRetriableErrors = []error{core.ErrInsufficientFunds, core.ErrInsufficientFundsForTransfer}
 )
@@ -171,7 +166,8 @@ func (c *Chain) Stop(ctx context.Context) error {
 
 // Query on-chain events and verify the TEE attestation
 func (c *Chain) queryAndVerify(ctx context.Context) {
-	eventQueryTicker := time.NewTicker(1 * time.Second)
+	queryTicker := c.cf.Chain.QueryTicker
+	eventQueryTicker := time.NewTicker(time.Duration(queryTicker) * time.Second)
 
 	for {
 		select {
@@ -287,8 +283,8 @@ func (c *Chain) queryChain(ctx context.Context) error {
 	}
 
 	// Limit the maximum number of blocks that can be queried per run
-	if startBlockNumber+maxBlocksPerQuery < int64(endBlockNumber) {
-		endBlockNumber = uint64(startBlockNumber + maxBlocksPerQuery)
+	if startBlockNumber+c.cf.Chain.MaxBlockPerQuery < int64(endBlockNumber) {
+		endBlockNumber = uint64(startBlockNumber + c.cf.Chain.MaxBlockPerQuery)
 	}
 
 	query := ethereum.FilterQuery{

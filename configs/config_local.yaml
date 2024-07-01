@@ -12,6 +12,8 @@ chain:
   rpc_url: "https://arb1.arbitrum.io/rpc"
   start_block: 0
   offset_block: 14400 # arbitrum block time: 0.25 sec. An offset of 14400 starts fetching blocks from 1 hours ago.
+  max_block_per_query: 500
+  query_ticker: 5 # second
 contract:
   addr: "0xFFbB58c8370f99b2ae619328D6B99D77Fef190Cb"
   tee_addr : "0x7f57004E08ef1702b2b88b87ae01a561ae10F10e"
