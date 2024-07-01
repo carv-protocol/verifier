@@ -13,8 +13,8 @@ var ProviderSet = wire.NewSet(NewWorkerServer)
 
 type Server struct {
 	cf     *conf.Bootstrap
-	logger *log.Helper
 	chain  *Chain
+	logger *log.Helper
 }
 
 func NewWorkerServer(bootstrap *conf.Bootstrap, logger *log.Helper) *Server {
@@ -30,6 +30,7 @@ func (s *Server) Start(ctx context.Context) error {
 	s.logger.WithContext(ctx).Info("worker server starting")
 
 	chain, err := NewChain(ctx, s.cf, s.logger)
+	s.chain = chain
 	if err != nil {
 		s.logger.WithContext(ctx).Fatalf("new chain error: %v", err)
 		return err

@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"os"
 	"strconv"
 	"time"
 
@@ -19,15 +20,7 @@ import (
 )
 
 // Node Exit by service
-func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int) {
-	_, found := c.cache.Get(common2.NODE_EXIT_BY_GASLESS_SERVICE)
-	if found {
-		c.logger.WithContext(ctx).Errorf("NodeExitByGaslessService is in progress")
-		return
-	}
-	c.logger.WithContext(ctx).Infof("NodeExitByGaslessService start........")
-	c.cache.Set(common2.NODE_EXIT_BY_GASLESS_SERVICE, true, common2.CACHE_EXPIRED_TIME*time.Second)
-	// Call Gasless serivice
+func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int) (bool, error) {
 	typedData := apitypes.TypedData{
 		Types: apitypes.Types{
 			"EIP712Domain": {
@@ -64,11 +57,38 @@ func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int)
 
 	v, r, s, err := tools.SignTypedDataAndSplit(typedData, c.verifierPrivKey)
 	if err != nil {
-		return
+		return false, err
 	}
-	// Send signature
-	fmt.Println(v, r, s)
-
+	nodeExitRequest := &gasless.ExplorerSendTxNodeExitRequest{
+		Signer:    c.verifierAddress.String(),
+		ExpiredAt: expiredAt.Uint64(),
+		V:         uint32(v),
+		R:         hex.EncodeToString(r[:]),
+		S:         hex.EncodeToString(s[:]),
+	}
+	var exit *gasless.Response
+	var exitErr error
+	for i := 0; i < 3; i++ {
+		c.logger.WithContext(ctx).Infof("NodeExitByGaslessService try %d", i+1)
+		exit, exitErr = c.gaslessClient.ExplorerSendTxNodeExit(ctx, nodeExitRequest)
+		if exitErr == nil {
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+	if exitErr != nil {
+		c.logger.WithContext(ctx).Errorf("NodeExitByGaslessService failed %s", exitErr.Error())
+		return false, err
+	}
+	if exit == nil {
+		return false, fmt.Errorf("NodeExitByGaslessService failed")
+	}
+	if exit.Code != 0 {
+		c.logger.WithContext(ctx).Errorf("NodeExitByGaslessService failed %s", exit.Msg)
+		os.Exit(0)
+	}
+	c.logger.WithContext(ctx).Infof("NodeExitByGaslessService success %s", exit)
+	return true, err
 }
 
 // Node Enter by service
@@ -126,14 +146,31 @@ func NodeEnterByGaslessService(ctx context.Context, c *Chain, replacedNode commo
 		R:            hex.EncodeToString(r[:]),
 		S:            hex.EncodeToString(s[:]),
 	}
-	enter, err := c.gaslessClient.ExplorerSendTxNodeEnter(ctx, nodeEnterRequest)
-	if err != nil {
+
+	var enter *gasless.Response
+	var enterErr error
+	for i := 0; i < 3; i++ {
+		c.logger.WithContext(ctx).Infof("NodeEnterByGaslessService try %d", i+1)
+		enter, enterErr = c.gaslessClient.ExplorerSendTxNodeEnter(ctx, nodeEnterRequest)
+		if enterErr == nil {
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+
+	if enterErr != nil {
+		c.logger.WithContext(ctx).Errorf("NodeEnterByGaslessService failed %s", enterErr.Error())
 		return false, err
 	}
-	c.logger.WithContext(ctx).Infof("NodeEnterByGaslessService success %s", enter)
-	if enter.Code != 0 {
-		panic(fmt.Errorf("NodeEnterByGaslessService failed %s", enter.Msg))
+	if enter == nil {
+		return false, fmt.Errorf("NodeEnterByGaslessService failed")
 	}
+	if enter.Code != 0 {
+		c.logger.WithContext(ctx).Errorf("NodeEnterByGaslessService failed %s", enter.Msg)
+		os.Exit(0)
+	}
+	c.logger.WithContext(ctx).Infof("NodeEnterByGaslessService success %s", enter)
+
 	return true, err
 
 }
@@ -184,21 +221,38 @@ func UpdateNodeCommissionRateByGaslessService(ctx context.Context, c *Chain, com
 		log.Errorf("SignTypedData error: %s", err.Error())
 		return false, err
 	}
-	// Send signature
-	setRes, err := c.gaslessClient.ExplorerSendTxModifyCommissionRate(ctx, &gasless.ExplorerSendTxModifyCommissionRateRequest{
-		Signer:         c.verifierAddress.String(),
-		CommissionRate: commissionRate,
-		ExpiredAt:      expiredAt.Uint64(),
-		V:              uint32(v),
-		R:              hex.EncodeToString(r[:]),
-		S:              hex.EncodeToString(s[:]),
-	})
-	if err != nil {
+
+	var setRes *gasless.Response
+	var setErr error
+	for i := 0; i < 3; i++ {
+		c.logger.WithContext(ctx).Infof("UpdateNodeCommissionRateByGaslessService try %d", i+1)
+		setRes, setErr = c.gaslessClient.ExplorerSendTxModifyCommissionRate(ctx, &gasless.ExplorerSendTxModifyCommissionRateRequest{
+			Signer:         c.verifierAddress.String(),
+			CommissionRate: commissionRate,
+			ExpiredAt:      expiredAt.Uint64(),
+			V:              uint32(v),
+			R:              hex.EncodeToString(r[:]),
+			S:              hex.EncodeToString(s[:]),
+		})
+		if setErr == nil {
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+
+	if setErr != nil {
+		c.logger.WithContext(ctx).Errorf("UpdateNodeCommissionRateByGaslessService failed %s", setErr.Error())
 		return false, err
 	}
-	if setRes.Code != 0 {
-		panic(fmt.Errorf("UpdateNodeCommissionRateByGaslessService failed %s", setRes.Msg))
+	if setRes == nil {
+		return false, fmt.Errorf("UpdateNodeCommissionRateByGaslessService failed")
 	}
+	if setRes.Code != 0 {
+		c.logger.WithContext(ctx).Errorf("UpdateNodeCommissionRateByGaslessService failed %s", setRes.Msg)
+		os.Exit(0)
+	}
+	c.logger.WithContext(ctx).Infof("UpdateNodeCommissionRateByGaslessService success %s", setRes)
+
 	return true, nil
 }
 
@@ -256,24 +310,33 @@ func UpdateNodeRewardClaimerByGaslessService(ctx context.Context, c *Chain, rewa
 		S:         hex.EncodeToString(s[:]),
 	}
 	// Send signature
-	setRes, err := c.gaslessClient.ExplorerSendTxSetRewardClaimer(ctx, explorerSendTxSetRewardClaimerRequest)
-	if err != nil {
+	var setRes *gasless.Response
+	var setErr error
+	for i := 0; i < 3; i++ {
+		c.logger.WithContext(ctx).Infof("UpdateNodeRewardClaimerByGaslessService try %d", i+1)
+		setRes, setErr = c.gaslessClient.ExplorerSendTxSetRewardClaimer(ctx, explorerSendTxSetRewardClaimerRequest)
+		if setErr == nil {
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+	if setErr != nil {
+		c.logger.WithContext(ctx).Errorf("UpdateNodeRewardClaimerByGaslessService failed %s", setErr.Error())
 		return false, err
 	}
-	if setRes.Code != 0 {
-		panic(fmt.Errorf("UpdateNodeRewardClaimerByGaslessService failed %s", setRes.Msg))
+	if setRes == nil {
+		return false, fmt.Errorf("UpdateNodeRewardClaimerByGaslessService failed")
 	}
+	if setRes.Code != 0 {
+		c.logger.WithContext(ctx).Errorf("UpdateNodeRewardClaimerByGaslessService failed %s", setRes.Msg)
+		os.Exit(0)
+	}
+	c.logger.WithContext(ctx).Infof("UpdateNodeRewardClaimerByGaslessService success %s", setRes)
 	return true, nil
 }
 
 // Node Report Verification Batch by service
 func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, attestationId [32]byte, result uint8, index uint32) (bool, error) {
-	_, found := c.cache.Get(common2.NODE_REPORT_VERIFICATION_BATCH_BY_GASLESS_SERVICE)
-	if found {
-		c.logger.WithContext(ctx).Errorf("NodeReportVerificationBatchByGaslessService is in progress")
-		return false, fmt.Errorf("NodeReportVerificationBatchByGaslessService is in progress")
-
-	}
 	c.logger.WithContext(ctx).Infof("NodeReportVerificationBatchByGaslessService start........")
 	c.cache.Set(common2.NODE_REPORT_VERIFICATION_BATCH_BY_GASLESS_SERVICE, true, common2.CACHE_EXPIRED_TIME*time.Second)
 	// Call Gasless serivice
@@ -335,13 +398,28 @@ func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, 
 		R:             hex.EncodeToString(r[:]),
 		S:             hex.EncodeToString(s[:]),
 	}
-	reportVerificationRes, err := c.gaslessClient.ExplorerSendTxNodeReportVerification(ctx, reportVerificationRequest)
-	if err != nil {
+	var reportVerificationRes *gasless.Response
+	var reportVerificationErr error
+	for i := 0; i < 3; i++ {
+		c.logger.WithContext(ctx).Infof("NodeReportVerificationBatchByGaslessService try %d", i+1)
+		reportVerificationRes, reportVerificationErr = c.gaslessClient.ExplorerSendTxNodeReportVerification(ctx, reportVerificationRequest)
+		if reportVerificationErr == nil {
+			c.logger.WithContext(ctx).Infof("NodeReportVerificationBatchByGaslessService failed %s", reportVerificationRes)
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+	if reportVerificationErr != nil {
+		c.logger.WithContext(ctx).Errorf("NodeReportVerificationBatchByGaslessService failed %s", reportVerificationErr.Error())
 		return false, err
+	}
+	if reportVerificationRes == nil {
+		return false, fmt.Errorf("NodeReportVerificationBatchByGaslessService failed")
 	}
 	if reportVerificationRes.Code != 0 {
 		return false, fmt.Errorf("NodeReportVerificationBatchByGaslessService failed %s", reportVerificationRes.Msg)
 	}
+	c.logger.WithContext(ctx).Infof("NodeReportVerificationBatchByGaslessService success %s", reportVerificationRes)
 	return true, nil
 
 }
