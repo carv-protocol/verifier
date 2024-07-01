@@ -58,6 +58,8 @@ message Chain {
   string rpc_url = 3;
   int64 start_block = 4;
   int64 offset_block = 5;
+  int64 max_block_per_query = 6;
+  int64 query_ticker = 7;
 }
 
 message Contract {

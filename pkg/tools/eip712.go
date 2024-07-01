@@ -74,6 +74,5 @@ func SignTypedDataAndSplit(typedData apitypes.TypedData, privateKey *ecdsa.Priva
 	r := signature[:32]
 	// s is the second 32 bytes of the signature
 	s := signature[32:64]
-	fmt.Println(v, r, s)
 	return v, [32]byte(r), [32]byte(s), nil
 }
