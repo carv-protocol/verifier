@@ -87,7 +87,7 @@ func NewChain(
 	cacheIns := cache.New(5*time.Minute, 10*time.Minute)
 
 	// init gasless client
-	httpClient, err := http.NewClient(ctx, http.WithEndpoint(bootstrap.GaslessService.Url))
+	httpClient, err := http.NewClient(ctx, http.WithTimeout(30*time.Second), http.WithEndpoint(bootstrap.GaslessService.Url))
 	if err != nil {
 		return nil, errors.Wrapf(err, "new http client error, url: %s", bootstrap.GaslessService.Url)
 	}
