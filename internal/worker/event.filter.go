@@ -18,16 +18,6 @@ func (l *LogFilter) NodeReportVerificationBatchLogFilter(ctx context.Context, c 
 	if err != nil {
 		return errors.Wrap(err, "contract ParseReportTeeAttestation error")
 	}
-	//
-	//logInfo := TeeReportAttestationEvent{
-	//	BlockNumber:       cLog.BlockNumber,
-	//	ContractAddress:   cLog.Address,
-	//	TxHash:            cLog.TxHash,
-	//	TxIndex:           unpackedData.Raw.TxIndex,
-	//	AttestationIDs:    unpackedData.AttestationIDs,
-	//	VerificationInfos: unpackedData.AttestationInfos,
-	//	RequestId:         unpackedData.RequestID,
-	//}
 
 	// Verify attestation
 	for i := 0; i < len(unpackedData.AttestationIDs); i++ {
@@ -90,7 +80,7 @@ func (l *LogFilter) ConfirmVrfNodesLogFilter(ctx context.Context, c *Chain, cLog
 			break
 		}
 	}
-	c.logger.WithContext(ctx).Error("searchResBool: %v", searchNodeIndex)
+	c.logger.WithContext(ctx).Infof("searchResBool: %v", searchNodeIndex)
 	if searchNodeIndex == -1 {
 		return nil
 	}
