@@ -188,6 +188,11 @@ func (c *Chain) submitVerifyResult(ctx context.Context) {
 	for {
 		select {
 		case cvn := <-c.confirmVrfNodeChan:
+			//delay x seconds
+			if c.cf.Chain.ReportDelay == 0 {
+				c.cf.Chain.ReportDelay = 30
+			}
+			time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
 			go func(cvn confirmVrfNodesInfo) {
 				for i := 0; i < len(c.verifyResultList); i++ {
 					if c.verifyResultList[i].requestId.Cmp(cvn.requestId) == 0 && !c.verifyResultList[i].isReported {
