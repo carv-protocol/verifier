@@ -60,6 +60,7 @@ message Chain {
   int64 offset_block = 5;
   int64 max_block_per_query = 6;
   int64 query_ticker = 7;
+  int64 report_delay = 8;
 }
 
 message Contract {

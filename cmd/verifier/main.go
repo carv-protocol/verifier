@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	_ "go.uber.org/automaxprocs"
 	"io"
 	originHttp "net/http"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"github.com/go-kratos/kratos/v2/middleware/tracing"
 	"github.com/go-kratos/kratos/v2/transport/grpc"
 	"github.com/go-kratos/kratos/v2/transport/http"
-	_ "go.uber.org/automaxprocs"
 
 	commonInternal "github.com/carv-protocol/verifier/internal/common"
 	"github.com/carv-protocol/verifier/internal/conf"
@@ -87,7 +87,6 @@ func main() {
 	} else {
 		configFile = fetchConfigFromURL(commonInternal.BASE_URl + "config_local.yaml")
 	}
-	fmt.Println("config file:", configFile)
 	c := config.New(
 		config.WithSource(
 			file.NewSource(configFile),
