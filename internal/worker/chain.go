@@ -3,10 +3,11 @@ package worker
 import (
 	"context"
 	"crypto/ecdsa"
-	"github.com/pkg/errors"
 	"math/big"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -132,7 +133,7 @@ func (c *Chain) Start(ctx context.Context) error {
 		c.logger.Errorf("NodeInfos error: %s", err.Error())
 	}
 	c.logger.WithContext(ctx).Infof("nodeInfos: %v", nodeInfos)
-	if c.beforeScanEvent(ctx, nodeInfos.Claimer, nodeInfos.CommissionRate, true) {
+	if c.beforeScanEvent(ctx, nodeInfos.Id, nodeInfos.Claimer, nodeInfos.CommissionRate, true) {
 		c.logger.WithContext(ctx).Infof("chain [%s] beforeScanEvent success", c.cf.Chain.ChainName)
 		// Monitor and verify on-chain TEE attestations
 		go c.queryAndVerify(ctx)
@@ -360,17 +361,28 @@ func (c *Chain) sendBatchResult(ctx context.Context, resultList []verifyResult) 
 	return nil
 }
 
-func (c *Chain) beforeScanEvent(ctx context.Context, rewardClaimer common.Address, commissionRate uint32, isGasless bool) bool {
+func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaimer common.Address, commissionRate uint32, isGasless bool) bool {
 	nodeAddress := c.verifierAddress
 	// Get the current timestamp
 	timestamp := big.NewInt(time.Now().Unix())
 	expiredTime := new(big.Int).Add(timestamp, big.NewInt(c.cf.Signature.ExpiredTime))
+
+	// Not the first time setup, update config if needed.
+	if nodeID != 0 {
+		if res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime); !res {
+			c.logger.WithContext(ctx).Error("Update node config failed")
+			return res
+		}
+	}
+
 	// Check if the node is online
 	isOnline, err := c.checkIsOnline(nodeAddress)
 	if err != nil {
 		c.logger.Errorf("checkIsOnline error: %s", err.Error())
 		return false
 	}
+
+	// if node is not online or first time register on chain
 	if !isOnline {
 		c.logger.Errorf("node [%s] is offline, waiting online", nodeAddress.Hex())
 		replaceNodeReq := &gasless.ExplorerReplacedNodeRequest{
@@ -390,30 +402,38 @@ func (c *Chain) beforeScanEvent(ctx context.Context, rewardClaimer common.Addres
 			c.logger.WithContext(ctx).Infof("enterRes: %v", enterRes)
 			return enterRes
 		}
-	} else {
-		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()) {
-			// Send Transaction
-			updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
-			if err2 != nil {
-				c.logger.WithContext(ctx).Errorf("UpdateNodeRewardClaimerByGaslessService error: %s", err2.Error())
+
+		// Need to set commission and rewards if it is first time setup
+		if nodeID == 0 {
+			if res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime); !res {
+				c.logger.WithContext(ctx).Error("Update node config failed")
+				return res
 			}
-			return updateRewardClaimerRes
-		}
-		if int(c.cf.Wallet.CommissionRate) != int(commissionRate) {
-			// Send Transaction
-			updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
-			if err != nil {
-				c.logger.WithContext(ctx).Errorf("UpdateNodeCommissionRateByGaslessService error: %s", err.Error())
-			}
-			return updateNodeCommissionRateRes
-		}
-		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) == strings.ToLower(rewardClaimer.Hex()) && int(c.cf.Wallet.CommissionRate) == int(commissionRate) {
-			c.logger.WithContext(ctx).Infof("node [%s] is online", nodeAddress.Hex())
-			return true
 		}
 	}
 
-	return false
+	return true
+}
+
+func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer common.Address, commissionRate uint32, expiredTime *big.Int) bool {
+	if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()) {
+		// Send Transaction
+		updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
+		if err2 != nil {
+			c.logger.WithContext(ctx).Errorf("UpdateNodeRewardClaimerByGaslessService error: %s", err2.Error())
+		}
+		return updateRewardClaimerRes
+	}
+	if int(c.cf.Wallet.CommissionRate) != int(commissionRate) {
+		// Send Transaction
+		updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("UpdateNodeCommissionRateByGaslessService error: %s", err.Error())
+		}
+		return updateNodeCommissionRateRes
+	}
+
+	return true
 }
 
 // Check node is or not online
