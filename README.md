@@ -132,6 +132,8 @@ wallet:
   keystore_password: ""
   reward_claimer_addr: "0x689d0b32Da0480095b7AE7b604f1b1997736B3F9"
   commission_rate: 100
+  max_block_per_query: 500
+  query_ticker: 5 # second
 ```
 
 ```shell
