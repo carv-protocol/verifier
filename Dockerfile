@@ -20,5 +20,6 @@ WORKDIR /app
 EXPOSE 8000
 EXPOSE 9000
 VOLUME /data/conf
+VOLUME /data/keystore
 
 CMD ["./verifier", "-conf", "/data/conf/config_docker.yaml"]

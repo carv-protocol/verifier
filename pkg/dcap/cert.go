@@ -126,7 +126,7 @@ func parseTCB(sgxExtMap map[string]asn1.RawValue, compSVNOIDs []asn1.ObjectIdent
 	var sequence []Ext
 	_, err := asn1.Unmarshal(pceSVNRaw.FullBytes, &sequence)
 	if err != nil {
-		return tcb, errors.New(fmt.Sprintf("failed to unmarshal ASN.1 sequence: %w", err))
+		return tcb, errors.New(fmt.Sprintf("failed to unmarshal ASN.1 sequence: %v", err))
 	}
 	pceExtMap := make(map[string]asn1.RawValue)
 	for i, ext := range sequence {
@@ -134,7 +134,7 @@ func parseTCB(sgxExtMap map[string]asn1.RawValue, compSVNOIDs []asn1.ObjectIdent
 	}
 	pceSVN, err := parseUint16ASN1(sequence)
 	if err != nil {
-		return tcb, errors.New(fmt.Sprintf("error parsing PCE SVN: %w", err))
+		return tcb, errors.New(fmt.Sprintf("error parsing PCE SVN: %v", err))
 	}
 	tcb.PceSVN = pceSVN
 	var compSVNArray []byte
@@ -150,7 +150,7 @@ func parseTCB(sgxExtMap map[string]asn1.RawValue, compSVNOIDs []asn1.ObjectIdent
 	j := 0
 	for i := 0; i < len(compSVNArray); i++ {
 		if j > len(tcb.CompSVNArray) {
-			return tcb, errors.New(fmt.Sprintf("error parsing Comp SVN: %w", err))
+			return tcb, errors.New(fmt.Sprintf("error parsing Comp SVN: %v", err))
 		}
 		if compSVNArray[i] > 0 {
 			tcb.CompSVNArray[j] = compSVNArray[i]
