@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -18,6 +16,7 @@ import (
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/transport/http"
 	"github.com/patrickmn/go-cache"
+	"github.com/pkg/errors"
 
 	"github.com/carv-protocol/verifier/api/gasless"
 	"github.com/carv-protocol/verifier/internal/conf"
@@ -397,18 +396,23 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 		if isGasless {
 			enterRes, err := NodeEnterByGaslessService(context.Background(), c, replaceNode, expiredTime)
 			if err != nil {
-				c.logger.Errorf("NodeEnterByGaslessService error: %s", err.Error())
+				c.logger.WithContext(ctx).Errorf("NodeEnterByGaslessService error: %s", err.Error())
 			}
-			c.logger.WithContext(ctx).Infof("enterRes: %v", enterRes)
-			return enterRes
-		}
 
-		// Need to set commission and rewards if it is first time setup
-		if nodeID == 0 {
-			if res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime); !res {
-				c.logger.WithContext(ctx).Error("Update node config failed")
+			if !enterRes {
+				c.logger.WithContext(ctx).Error("enterRes is false")
+				return enterRes
+			}
+
+			// Need to set commission and rewards if it is first time setup
+			if nodeID == 0 {
+				res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime)
+				if !res {
+					c.logger.WithContext(ctx).Error("Update node config failed")
+				}
 				return res
 			}
+
 		}
 	}
 
