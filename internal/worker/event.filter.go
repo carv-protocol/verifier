@@ -89,6 +89,7 @@ func (l *LogFilter) ConfirmVrfNodesLogFilter(ctx context.Context, c *Chain, cLog
 		nodeId:       c.nodeInf.nodeId,
 		vrfNodeIndex: uint32(searchNodeIndex),
 		requestId:    unpackedData.RequestId,
+		deadline:     unpackedData.Deadline,
 	}
 
 	c.logger.WithContext(ctx).Infof("logInfo: %+v", logInfo)
