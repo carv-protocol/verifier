@@ -50,6 +50,7 @@ type confirmVrfNodesInfo struct {
 	nodeId       uint32
 	vrfNodeIndex uint32
 	requestId    *big.Int
+	deadline     *big.Int
 }
 
 func NewChain(
@@ -194,6 +195,9 @@ func (c *Chain) submitVerifyResult(ctx context.Context) {
 			}
 			time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
 			go func(cvn confirmVrfNodesInfo) {
+				if cvn.deadline.Cmp(big.NewInt(time.Now().Unix())) == -1 {
+					return
+				}
 				for i := 0; i < len(c.verifyResultList); i++ {
 					if c.verifyResultList[i].requestId.Cmp(cvn.requestId) == 0 && !c.verifyResultList[i].isReported {
 						resultEnum := 0
