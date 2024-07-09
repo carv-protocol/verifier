@@ -348,21 +348,6 @@ func UpdateNodeRewardClaimerByGaslessService(ctx context.Context, c *Chain, rewa
 	if err != nil {
 		return false, err
 	}
-	if !c.cf.Chain.IsGasless {
-		auth, err := c.GetTransactionConfig(ctx)
-		if err != nil {
-			c.logger.WithContext(ctx).Errorf("Get Auth failed %s", err.Error())
-			return false, err
-		}
-		update, err := c.protocolServiceContractObj.NodeSetRewardClaimerWithSignature(auth, rewardClaimer, expiredAt, c.verifierAddress, v, r, s)
-		if err != nil {
-			c.logger.WithContext(ctx).Errorf("UpdateNodeRewardClaimerByGaslessService failed %s", err.Error())
-			os.Exit(0)
-		}
-		c.logger.WithContext(ctx).Infof("UpdateNodeRewardClaimerByGaslessService success %s", update.Hash())
-		//TODO Check Transaction result from chain by hash.
-		return true, nil
-	}
 	explorerSendTxSetRewardClaimerRequest := &gasless.ExplorerSendTxSetRewardClaimerRequest{
 		Signer:    c.verifierAddress.String(),
 		Claimer:   rewardClaimer.String(),
