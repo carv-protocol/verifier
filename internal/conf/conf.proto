@@ -61,6 +61,7 @@ message Chain {
   int64 max_block_per_query = 6;
   int64 query_ticker = 7;
   int64 report_delay = 8;
+  bool gas_mode = 9;
 }
 
 message Contract {
@@ -68,6 +69,7 @@ message Contract {
   string tee_addr = 2;
   string topic1 = 3; // topic1 is the topic of the event: teeReportAttestations
   string topic2 = 4; // topic2 is the topic of the event: confirmVrfNode
+  string topic3 = 5; // topic3 is the topic of the event: NodeClear
 }
 
 message Wallet {
