@@ -410,6 +410,9 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 
 			// Need to set commission and rewards if it is first time setup
 			if nodeID == 0 {
+				// Fix: add delay to make sure gasless server detects the node online event
+				time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
+
 				res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime)
 				if !res {
 					c.logger.WithContext(ctx).Error("Update node config failed")
