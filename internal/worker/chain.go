@@ -424,7 +424,16 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 }
 
 func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer common.Address, commissionRate uint32, expiredTime *big.Int) bool {
+	c.logger.WithContext(ctx).Infof(
+		"Update node config if needed. On-chain claimer: %s, config claimer: %s; on-chain commission: %d, config commission: %d",
+		rewardClaimer.Hex(),
+		c.cf.Wallet.RewardClaimerAddr,
+		commissionRate,
+		c.cf.Wallet.CommissionRate,
+	)
+
 	if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()) {
+		c.logger.WithContext(ctx).Infof("update reward claimer to %s", c.cf.Wallet.RewardClaimerAddr)
 		// Send Transaction
 		updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
 		if err2 != nil {
@@ -433,6 +442,7 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 		return updateRewardClaimerRes
 	}
 	if int(c.cf.Wallet.CommissionRate) != int(commissionRate) {
+		c.logger.WithContext(ctx).Infof("update commission rate to %d", c.cf.Wallet.CommissionRate)
 		// Send Transaction
 		updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
 		if err != nil {
