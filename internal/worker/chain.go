@@ -398,10 +398,10 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 				c.logger.WithContext(ctx).Errorf("UpdateNodeRewardClaimerByGaslessService error: %s", err2.Error())
 			}
 			return updateRewardClaimerRes
-		}
-	}
+    }
 
 	if int(c.cf.Wallet.CommissionRate) != int(commissionRate) {
+		c.logger.WithContext(ctx).Infof("update commission rate to %d", c.cf.Wallet.CommissionRate)
 		// Send Transaction
 		updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
 		if err != nil {
