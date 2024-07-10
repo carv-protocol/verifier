@@ -347,7 +347,7 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 		return false
 	}
 
-// if node is not online or first time register on chain
+	// if node is not online or first time register on chain
 	if !isOnline {
 		c.logger.Errorf("node [%s] is offline, waiting online", nodeAddress.Hex())
 		replaceNodeReq := &gasless.ExplorerReplacedNodeRequest{
@@ -359,30 +359,28 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 		}
 		replaceNode := common.HexToAddress(replacedNodeResp.Data.ReplacedAddr)
 		// Send Transaction
-		if isGasless {
-			enterRes, err := NodeEnterByGaslessService(context.Background(), c, replaceNode, expiredTime)
-			if err != nil {
-				c.logger.WithContext(ctx).Errorf("NodeEnterByGaslessService error: %s", err.Error())
-			}
-
-			if !enterRes {
-				c.logger.WithContext(ctx).Error("enterRes is false")
-				return enterRes
-			}
-
-			// Need to set commission and rewards if it is first time setup
-			if nodeID == 0 {
-				// Fix: add delay to make sure gasless server detects the node online event
-				time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
-
-				res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime)
-				if !res {
-					c.logger.WithContext(ctx).Error("Update node config failed")
-				}
-				return res
-			}
-
+		enterRes, err := NodeEnterByGaslessService(context.Background(), c, replaceNode, expiredTime)
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("NodeEnterByGaslessService error: %s", err.Error())
 		}
+
+		if !enterRes {
+			c.logger.WithContext(ctx).Error("enterRes is false")
+			return enterRes
+		}
+
+		// Need to set commission and rewards if it is first time setup
+		if nodeID == 0 {
+			// Fix: add delay to make sure gasless server detects the node online event
+			time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
+
+			res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime)
+			if !res {
+				c.logger.WithContext(ctx).Error("Update node config failed")
+			}
+			return res
+		}
+
 	}
 	return true
 }
