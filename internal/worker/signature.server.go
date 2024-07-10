@@ -66,6 +66,23 @@ func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int)
 		R:         hex.EncodeToString(r[:]),
 		S:         hex.EncodeToString(s[:]),
 	}
+	if c.cf.Chain.GasMode {
+		// get Auth
+		auth, err := c.GetTransactionConfig(ctx)
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("Get Auth failed %s", err.Error())
+			return false, err
+		}
+		// Call NodeExit
+		exit, err := c.protocolServiceContractObj.NodeExit(auth)
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("NodeExitByGaslessService failed %s", err.Error())
+			return false, err
+		}
+		c.logger.WithContext(ctx).Infof("NodeExitByGaslessService success %s", exit.Hash())
+		//TODO Check Transaction result from chain by hash.
+		return true, nil
+	}
 	var exit *gasless.Response
 	var exitErr error
 	for i := 0; i < 3; i++ {
@@ -138,6 +155,22 @@ func NodeEnterByGaslessService(ctx context.Context, c *Chain, replacedNode commo
 	if err != nil {
 		return false, err
 	}
+	if c.cf.Chain.GasMode {
+		auth, err := c.GetTransactionConfig(ctx)
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("Get Auth failed %s", err.Error())
+			return false, err
+		}
+		enter, err := c.protocolServiceContractObj.NodeEnter(auth, replacedNode)
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("NodeEnterByGaslessService failed %s", err.Error())
+			os.Exit(0)
+		}
+		c.logger.WithContext(ctx).Infof("NodeEnterByGaslessService success %s", enter.Hash())
+		//TODO Check Transaction result from chain by hash.
+		return true, nil
+	}
+
 	nodeEnterRequest := &gasless.ExplorerSendTxNodeEnterRequest{
 		Signer:       c.verifierAddress.String(),
 		ReplacedNode: replacedNode.String(),
@@ -155,6 +188,7 @@ func NodeEnterByGaslessService(ctx context.Context, c *Chain, replacedNode commo
 		if enterErr == nil {
 			break
 		}
+		c.logger.WithContext(ctx).Errorf("NodeEnterByGaslessService failed %s", enterErr.Error())
 		time.Sleep(2 * time.Second)
 	}
 
@@ -221,7 +255,21 @@ func UpdateNodeCommissionRateByGaslessService(ctx context.Context, c *Chain, com
 		log.Errorf("SignTypedData error: %s", err.Error())
 		return false, err
 	}
-
+	if c.cf.Chain.GasMode {
+		auth, err := c.GetTransactionConfig(ctx)
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("Get Auth failed %s", err.Error())
+			return false, err
+		}
+		update, err := c.protocolServiceContractObj.NodeModifyCommissionRate(auth, commissionRate)
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("UpdateNodeCommissionRateByGaslessService failed %s", err.Error())
+			os.Exit(0)
+		}
+		c.logger.WithContext(ctx).Infof("UpdateNodeCommissionRateByGaslessService success %s", update.Hash())
+		//TODO Check Transaction result from chain by hash.
+		return true, nil
+	}
 	var setRes *gasless.Response
 	var setErr error
 	for i := 0; i < 3; i++ {
@@ -382,6 +430,21 @@ func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, 
 			"result":        strconv.Itoa(int(result)),
 			"index":         strconv.Itoa(int(index)),
 		},
+	}
+	if c.cf.Chain.GasMode {
+		auth, err := c.GetTransactionConfig(ctx)
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("Get Auth failed %s", err.Error())
+			return false, err
+		}
+		update, err := c.protocolServiceContractObj.NodeReportVerification(auth, attestationId, uint32(result), uint8(index))
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("NodeReportVerificationBatchByGaslessService failed %s", err.Error())
+			os.Exit(0)
+		}
+		c.logger.WithContext(ctx).Infof("NodeReportVerificationBatchByGaslessService success %s", update.Hash())
+		//TODO Check Transaction result from chain by hash.
+		return true, nil
 	}
 
 	v, r, s, err := tools.SignTypedDataAndSplit(typedData, c.verifierPrivKey)

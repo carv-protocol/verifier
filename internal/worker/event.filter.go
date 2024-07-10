@@ -2,9 +2,9 @@ package worker
 
 import (
 	"context"
-	"github.com/pkg/errors"
-
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/pkg/errors"
+	"strings"
 
 	"github.com/carv-protocol/verifier/pkg/dcap"
 	"github.com/carv-protocol/verifier/pkg/tools"
@@ -49,7 +49,6 @@ func (l *LogFilter) NodeReportVerificationBatchLogFilter(ctx context.Context, c 
 			result:          result,
 			isReported:      false,
 		})
-		c.logger.WithContext(ctx).Infof("verify %v result: %v", attestationID, result)
 	}
 
 	return nil
@@ -64,15 +63,6 @@ func (l *LogFilter) ConfirmVrfNodesLogFilter(ctx context.Context, c *Chain, cLog
 		c.logger.WithContext(ctx).Infof("no vrf node chosen")
 		return nil
 	}
-	logInfo := ConfirmVrfNodesEvent{
-		BlockNumber:     cLog.BlockNumber,
-		ContractAddress: cLog.Address,
-		TxHash:          cLog.TxHash,
-		TxIndex:         unpackedData.Raw.TxIndex,
-		RequestId:       unpackedData.RequestId,
-		VrfChosen:       unpackedData.VrfChosen,
-		Deadline:        unpackedData.Deadline,
-	}
 	searchNodeIndex := -1
 	for i := 0; i < len(unpackedData.VrfChosen); i++ {
 		if unpackedData.VrfChosen[i] == c.nodeInf.nodeId {
@@ -80,7 +70,6 @@ func (l *LogFilter) ConfirmVrfNodesLogFilter(ctx context.Context, c *Chain, cLog
 			break
 		}
 	}
-	c.logger.WithContext(ctx).Infof("searchResBool: %v", searchNodeIndex)
 	if searchNodeIndex == -1 {
 		return nil
 	}
@@ -92,6 +81,17 @@ func (l *LogFilter) ConfirmVrfNodesLogFilter(ctx context.Context, c *Chain, cLog
 		deadline:     unpackedData.Deadline,
 	}
 
-	c.logger.WithContext(ctx).Infof("logInfo: %+v", logInfo)
+	return nil
+}
+
+func (l *LogFilter) NodeClearLogFilter(ctx context.Context, c *Chain, log types.Log) error {
+	unpackedData, err := c.protocolServiceContractObj.ParseNodeClear(log)
+	if err != nil {
+		c.logger.WithContext(ctx).Error("contract ParseNodeClear error: %s", err.Error())
+		return errors.Wrap(err, "contract ParseNodeClear error")
+	}
+	if strings.ToLower(unpackedData.Node.String()) == strings.ToLower(c.verifierAddress.String()) {
+		c.exitNodeChan <- struct{}{}
+	}
 	return nil
 }
