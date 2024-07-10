@@ -347,7 +347,7 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 
 	// if node is not online or first time register on chain
 	if !isOnline {
-		c.logger.Errorf("node [%s] is offline, waiting online", nodeAddress.Hex())
+		c.logger.Infof("node [%s] is offline, waiting online", nodeAddress.Hex())
 		replaceNodeReq := &gasless.ExplorerReplacedNodeRequest{
 			VerifierAddr: nodeAddress.Hex(),
 		}
@@ -381,7 +381,7 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 
 func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer common.Address, commissionRate uint32, expiredTime *big.Int) bool {
 	// gas model: reward claimer is current node address
-	if c.cf.Chain.IsGasless {
+	if c.cf.Chain.GasMode {
 		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()) {
 			// Send Transaction
 			updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
