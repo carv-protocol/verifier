@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	_ "go.uber.org/automaxprocs"
 	"io"
+	"math"
 	originHttp "net/http"
 	"os"
+
+	_ "go.uber.org/automaxprocs"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-kratos/kratos/v2"
@@ -44,7 +46,7 @@ type FlagVar struct {
 	GenerateKeystore bool
 
 	RewardAddress  string
-	CommissionRate int
+	CommissionRate float64
 }
 
 func init() {
@@ -54,7 +56,7 @@ func init() {
 	flag.StringVar(&flagVar.KeystorePassword, "keystore-password", "", "keystore password, eg: -keystore-password 123456")
 	flag.BoolVar(&flagVar.GenerateKeystore, "generate-keystore", false, "generate keystore, eg: -generate-keystore")
 	flag.StringVar(&flagVar.RewardAddress, "reward-address", "", "reward address, eg: -reward-address 0x123456")
-	flag.IntVar(&flagVar.CommissionRate, "commission-rate", 0, "commission rate, eg: -commission-rate 10")
+	flag.Float64Var(&flagVar.CommissionRate, "commission-rate", 0, "commission rate, eg: -commission-rate 10")
 }
 
 func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server, workerServer *worker.Server) *kratos.App {
@@ -130,7 +132,7 @@ func main() {
 
 	if flagVar.Conf != "" {
 		flagVar.RewardAddress = bc.Wallet.RewardClaimerAddr
-		flagVar.CommissionRate = int(bc.Wallet.CommissionRate)
+		flagVar.CommissionRate = bc.Wallet.CommissionRate
 	}
 	if common.IsHexAddress(flagVar.RewardAddress) == false {
 		panic("invalid reward address")
@@ -140,7 +142,14 @@ func main() {
 		panic("invalid commission rate")
 	}
 	bc.Wallet.RewardClaimerAddr = flagVar.RewardAddress
-	bc.Wallet.CommissionRate = int64(flagVar.CommissionRate * 100) // 1% -> 100/10000
+	bc.Wallet.CommissionRate = flagVar.CommissionRate * 100 // 1% -> 100/10000
+
+	// Commission should be a whole number if input with at most 2 deciamls
+	// Should be in range 0 - 10000. If input value is 1.5, the new commission will be 150.
+	if bc.Wallet.CommissionRate != math.Trunc(bc.Wallet.CommissionRate) {
+		panic("invalid commission rate, at most 2 decimals")
+	}
+
 	app, cleanup, err := wireApp(&bc, logFormat, logger)
 	if err != nil {
 		panic(err)
