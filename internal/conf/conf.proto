@@ -61,7 +61,7 @@ message Chain {
   int64 max_block_per_query = 6;
   int64 query_ticker = 7;
   int64 report_delay = 8;
-  bool gas_mode = 9;
+  bool enable_gas_mode = 9;
 }
 
 message Contract {

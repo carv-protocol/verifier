@@ -66,7 +66,7 @@ func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int)
 		R:         hex.EncodeToString(r[:]),
 		S:         hex.EncodeToString(s[:]),
 	}
-	if c.cf.Chain.GasMode {
+	if c.cf.Chain.EnableGasMode {
 		// get Auth
 		auth, err := c.GetTransactionConfig(ctx)
 		if err != nil {
@@ -155,7 +155,7 @@ func NodeEnterByGaslessService(ctx context.Context, c *Chain, replacedNode commo
 	if err != nil {
 		return false, err
 	}
-	if c.cf.Chain.GasMode {
+	if c.cf.Chain.EnableGasMode {
 		auth, err := c.GetTransactionConfig(ctx)
 		if err != nil {
 			c.logger.WithContext(ctx).Errorf("Get Auth failed %s", err.Error())
@@ -255,7 +255,7 @@ func UpdateNodeCommissionRateByGaslessService(ctx context.Context, c *Chain, com
 		log.Errorf("SignTypedData error: %s", err.Error())
 		return false, err
 	}
-	if c.cf.Chain.GasMode {
+	if c.cf.Chain.EnableGasMode {
 		auth, err := c.GetTransactionConfig(ctx)
 		if err != nil {
 			c.logger.WithContext(ctx).Errorf("Get Auth failed %s", err.Error())
@@ -431,7 +431,7 @@ func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, 
 			"index":         strconv.Itoa(int(index)),
 		},
 	}
-	if c.cf.Chain.GasMode {
+	if c.cf.Chain.EnableGasMode {
 		auth, err := c.GetTransactionConfig(ctx)
 		if err != nil {
 			c.logger.WithContext(ctx).Errorf("Get Auth failed %s", err.Error())
