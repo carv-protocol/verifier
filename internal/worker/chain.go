@@ -394,7 +394,7 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 		c.cf.Wallet.CommissionRate,
 	)
 	// gas model: reward claimer is current node address
-	if c.cf.Chain.GasMode {
+	if !c.cf.Chain.GasMode {
 		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()) {
 			// Send Transaction
 			updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
