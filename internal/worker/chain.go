@@ -393,6 +393,13 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 		commissionRate,
 		c.cf.Wallet.CommissionRate,
 	)
+	c.logger.WithContext(ctx).Infof(
+		"Gas mode: %t, config rewward: %s, on-chain rewards: %s, compare result: %s",
+		c.cf.Chain.EnableGasMode,
+		strings.ToLower(c.cf.Wallet.RewardClaimerAddr),
+		strings.ToLower(rewardClaimer.Hex()),
+		strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()),
+	)
 	// gas model: reward claimer is current node address
 	if !c.cf.Chain.EnableGasMode {
 		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()) {
