@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
 	"strings"
@@ -89,6 +90,15 @@ func (l *LogFilter) NodeClearLogFilter(ctx context.Context, c *Chain, log types.
 	if err != nil {
 		c.logger.WithContext(ctx).Error("contract ParseNodeClear error: %s", err.Error())
 		return errors.Wrap(err, "contract ParseNodeClear error")
+	}
+	// add now active check
+	nodeInfos, err := c.protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, unpackedData.Node)
+	if err != nil {
+		return err
+	}
+	if nodeInfos.Active {
+		c.logger.WithContext(ctx).Infof("node %s is active, ignore node clear event", unpackedData.Node.String())
+		return nil
 	}
 	if strings.ToLower(unpackedData.Node.String()) == strings.ToLower(c.verifierAddress.String()) {
 		c.exitNodeChan <- struct{}{}
