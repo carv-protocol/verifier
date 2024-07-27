@@ -212,6 +212,18 @@ gasless_service:
   url: "https://interface.carv.io"
 ```
 
+## Other Configuration
+
+### Change The Default Server Port
+> if you want to change the default server port, you can change the `server.port` in the `config.yaml` file.
+```yaml
+#####
+server:
+  http:
+    addr: 0.0.0.0:18000 # http server address
+#####
+```
+
 ## Contribution
 We welcome contributions of all forms! If you have any questions, suggestions, or have identified any bugs, please submit them through Issues. If you would like to contribute code, please submit it via Pull Requests.
 
