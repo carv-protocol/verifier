@@ -127,8 +127,6 @@ func (c *Chain) Start(ctx context.Context) error {
 	}
 	// Apply the offset to begin verification starting from the latest unverified attestation
 	c.latestBlockNumber -= c.cf.Chain.GetOffsetBlock()
-	//c.latestBlockNumber = 58784070
-	//c.latestBlockNumber = 59109506
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
 	nodeInfos, err := c.protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, c.verifierAddress)
@@ -335,7 +333,7 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 	// Not the first time setup, update config if needed.
 	if nodeID != 0 {
 		if res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime); !res {
-			c.logger.WithContext(ctx).Error("Update node config failed")
+			c.logger.WithContext(ctx).Error("Failed to update node configuration.")
 			return res
 		}
 	}
@@ -361,7 +359,7 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 		// Send Transaction
 		enterRes, err := NodeEnterByGaslessService(context.Background(), c, replaceNode, expiredTime)
 		if err != nil {
-			c.logger.WithContext(ctx).Errorf("NodeEnterByGaslessService error: %s", err.Error())
+			c.logger.WithContext(ctx).Errorf("Failed to launch verifier node: %s: %s", err.Error())
 		}
 
 		if !enterRes {
@@ -376,7 +374,7 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 
 			res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime)
 			if !res {
-				c.logger.WithContext(ctx).Error("Update node config failed")
+				c.logger.WithContext(ctx).Error("Failed to update node configuration.")
 			}
 			return res
 		}
@@ -396,22 +394,22 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 	// gas model: reward claimer is current node address
 	if !c.cf.Chain.EnableGasMode {
 		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()) {
-			c.logger.WithContext(ctx).Infof("update reward claimer address to %s", c.cf.Wallet.RewardClaimerAddr)
+			c.logger.WithContext(ctx).Infof("Reward recipient address updated to %s.", c.cf.Wallet.RewardClaimerAddr)
 			// Send Transaction
 			updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
 			if err2 != nil {
-				c.logger.WithContext(ctx).Errorf("UpdateNodeRewardClaimerByGaslessService error: %s", err2.Error())
+				c.logger.WithContext(ctx).Errorf("Failed to update reward recipient address: %s", err2.Error())
 			}
 			return updateRewardClaimerRes
 		}
 	}
 
 	if int(c.cf.Wallet.CommissionRate) != int(commissionRate) {
-		c.logger.WithContext(ctx).Infof("update commission rate to %d", c.cf.Wallet.CommissionRate)
+		c.logger.WithContext(ctx).Infof("Commission rate updated to %d.", c.cf.Wallet.CommissionRate)
 		// Send Transaction
 		updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
 		if err != nil {
-			c.logger.WithContext(ctx).Errorf("UpdateNodeCommissionRateByGaslessService error: %s", err.Error())
+			c.logger.WithContext(ctx).Errorf("Failed to update commission rate: %s", err.Error())
 		}
 		return updateNodeCommissionRateRes
 	}
@@ -458,7 +456,7 @@ func (c *Chain) monitorExit(ctx context.Context) {
 	for {
 		select {
 		case <-c.exitNodeChan:
-			c.logger.WithContext(ctx).Infof("Beacause of Node's weight is less than other node, Be replaced!")
+			c.logger.WithContext(ctx).Infof("Verifer node taken offline because the network has reached the maximum limit of 5,000 active nodes.")
 			os.Exit(0)
 		case <-c.stopChan:
 			c.logger.WithContext(ctx).Infof("chain [%s] monitorExit stopping", c.cf.Chain.ChainName)
