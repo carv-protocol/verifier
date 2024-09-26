@@ -16,8 +16,6 @@ import (
 	"github.com/go-kratos/kratos/v2/config/file"
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/go-kratos/kratos/v2/middleware/tracing"
-	"github.com/go-kratos/kratos/v2/transport/grpc"
-	"github.com/go-kratos/kratos/v2/transport/http"
 
 	commonInternal "github.com/carv-protocol/verifier/internal/common"
 	"github.com/carv-protocol/verifier/internal/conf"
@@ -59,18 +57,14 @@ func init() {
 	flag.Float64Var(&flagVar.CommissionRate, "commission-rate", 0, "commission rate, eg: -commission-rate 10")
 }
 
-func newApp(logger log.Logger, gs *grpc.Server, hs *http.Server, workerServer *worker.Server) *kratos.App {
+func newApp(logger log.Logger, workerServer *worker.Server) *kratos.App {
 	return kratos.New(
 		kratos.ID(id),
 		kratos.Name(Name),
 		kratos.Version(Version),
 		kratos.Metadata(map[string]string{}),
 		kratos.Logger(logger),
-		kratos.Server(
-			gs,
-			hs,
-			workerServer,
-		),
+		kratos.Server(workerServer),
 	)
 }
 
