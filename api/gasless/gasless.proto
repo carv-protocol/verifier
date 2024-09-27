@@ -56,6 +56,7 @@ message ExplorerSendTxNodeEnterRequest {
   uint32 v = 4;
   string r = 5;
   string s = 6;
+  string version = 7;
 }
 
 message ExplorerSendTxNodeExitRequest {
@@ -64,6 +65,7 @@ message ExplorerSendTxNodeExitRequest {
   uint32 v = 3;
   string r = 4;
   string s = 5;
+  string version = 6;
 }
 
 message ExplorerSendTxModifyCommissionRateRequest {
@@ -73,6 +75,7 @@ message ExplorerSendTxModifyCommissionRateRequest {
   uint32 v = 4;
   string r = 5;
   string s = 6;
+  string version = 7;
 }
 
 message ExplorerSendTxSetRewardClaimerRequest {
@@ -82,6 +85,7 @@ message ExplorerSendTxSetRewardClaimerRequest {
   uint32 v = 4;
   string r = 5;
   string s = 6;
+  string version = 7;
 }
 
 message ExplorerSendTxNodeReportVerificationRequest {
@@ -92,6 +96,7 @@ message ExplorerSendTxNodeReportVerificationRequest {
   uint32 v = 5;
   string r = 6;
   string s = 7;
+  string version = 8;
 }
 
 message ExplorerReplacedNodeRequest {

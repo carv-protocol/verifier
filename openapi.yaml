@@ -3,7 +3,7 @@
 
 openapi: 3.0.3
 info:
-    title: Gassless API
+    title: ""
     version: 0.0.1
 paths:
     /explorer_alphanet/replaced_node:
@@ -22,13 +22,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/ExplorerReplacedNodeResponse'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
+                                $ref: '#/components/schemas/api.gasless.ExplorerReplacedNodeResponse'
     /explorer_alphanet/send_tx_modify_commission_rate:
         post:
             tags:
@@ -38,7 +32,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/ExplorerSendTxModifyCommissionRateRequest'
+                            $ref: '#/components/schemas/api.gasless.ExplorerSendTxModifyCommissionRateRequest'
                 required: true
             responses:
                 "200":
@@ -46,13 +40,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Response'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
+                                $ref: '#/components/schemas/api.gasless.Response'
     /explorer_alphanet/send_tx_node_enter:
         post:
             tags:
@@ -62,7 +50,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/ExplorerSendTxNodeEnterRequest'
+                            $ref: '#/components/schemas/api.gasless.ExplorerSendTxNodeEnterRequest'
                 required: true
             responses:
                 "200":
@@ -70,13 +58,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Response'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
+                                $ref: '#/components/schemas/api.gasless.Response'
     /explorer_alphanet/send_tx_node_exit:
         post:
             tags:
@@ -86,7 +68,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/ExplorerSendTxNodeExitRequest'
+                            $ref: '#/components/schemas/api.gasless.ExplorerSendTxNodeExitRequest'
                 required: true
             responses:
                 "200":
@@ -94,13 +76,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Response'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
+                                $ref: '#/components/schemas/api.gasless.Response'
     /explorer_alphanet/send_tx_node_report_verification:
         post:
             tags:
@@ -110,7 +86,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/ExplorerSendTxNodeReportVerificationRequest'
+                            $ref: '#/components/schemas/api.gasless.ExplorerSendTxNodeReportVerificationRequest'
                 required: true
             responses:
                 "200":
@@ -118,13 +94,7 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Response'
-                default:
-                    description: Default error response
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/Status'
+                                $ref: '#/components/schemas/api.gasless.Response'
     /explorer_alphanet/send_tx_set_reward_claimer:
         post:
             tags:
@@ -134,7 +104,7 @@ paths:
                 content:
                     application/json:
                         schema:
-                            $ref: '#/components/schemas/ExplorerSendTxSetRewardClaimerRequest'
+                            $ref: '#/components/schemas/api.gasless.ExplorerSendTxSetRewardClaimerRequest'
                 required: true
             responses:
                 "200":
@@ -142,16 +112,28 @@ paths:
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Response'
-                default:
-                    description: Default error response
+                                $ref: '#/components/schemas/api.gasless.Response'
+    /verifier/{name}:
+        get:
+            tags:
+                - Verifier
+            operationId: Verifier_SayHello
+            parameters:
+                - name: name
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/Status'
+                                $ref: '#/components/schemas/verifier.v1.HelloReply'
 components:
     schemas:
-        ExplorerReplacedNodeResponse:
+        api.gasless.ExplorerReplacedNodeResponse:
             type: object
             properties:
                 code:
@@ -160,8 +142,8 @@ components:
                 msg:
                     type: string
                 data:
-                    $ref: '#/components/schemas/ReplacedNode'
-        ExplorerSendTxModifyCommissionRateRequest:
+                    $ref: '#/components/schemas/api.gasless.ReplacedNode'
+        api.gasless.ExplorerSendTxModifyCommissionRateRequest:
             type: object
             properties:
                 signer:
@@ -178,7 +160,9 @@ components:
                     type: string
                 s:
                     type: string
-        ExplorerSendTxNodeEnterRequest:
+                version:
+                    type: string
+        api.gasless.ExplorerSendTxNodeEnterRequest:
             type: object
             properties:
                 signer:
@@ -194,7 +178,9 @@ components:
                     type: string
                 s:
                     type: string
-        ExplorerSendTxNodeExitRequest:
+                version:
+                    type: string
+        api.gasless.ExplorerSendTxNodeExitRequest:
             type: object
             properties:
                 signer:
@@ -208,7 +194,9 @@ components:
                     type: string
                 s:
                     type: string
-        ExplorerSendTxNodeReportVerificationRequest:
+                version:
+                    type: string
+        api.gasless.ExplorerSendTxNodeReportVerificationRequest:
             type: object
             properties:
                 signer:
@@ -228,7 +216,9 @@ components:
                     type: string
                 s:
                     type: string
-        ExplorerSendTxSetRewardClaimerRequest:
+                version:
+                    type: string
+        api.gasless.ExplorerSendTxSetRewardClaimerRequest:
             type: object
             properties:
                 signer:
@@ -244,20 +234,14 @@ components:
                     type: string
                 s:
                     type: string
-        GoogleProtobufAny:
-            type: object
-            properties:
-                '@type':
+                version:
                     type: string
-                    description: The type of the serialized message.
-            additionalProperties: true
-            description: Contains an arbitrary serialized message along with a @type that describes the type of the serialized message.
-        ReplacedNode:
+        api.gasless.ReplacedNode:
             type: object
             properties:
                 replacedAddr:
                     type: string
-        Response:
+        api.gasless.Response:
             type: object
             properties:
                 code:
@@ -267,21 +251,11 @@ components:
                     type: string
                 data:
                     type: string
-        Status:
+        verifier.v1.HelloReply:
             type: object
             properties:
-                code:
-                    type: integer
-                    description: The status code, which should be an enum value of [google.rpc.Code][google.rpc.Code].
-                    format: int32
                 message:
                     type: string
-                    description: A developer-facing error message, which should be in English. Any user-facing error message should be localized and sent in the [google.rpc.Status.details][google.rpc.Status.details] field, or localized by the client.
-                details:
-                    type: array
-                    items:
-                        $ref: '#/components/schemas/GoogleProtobufAny'
-                    description: A list of messages that carry the error details.  There is a common set of message types for APIs to use.
-            description: 'The `Status` type defines a logical error model that is suitable for different programming environments, including REST APIs and RPC APIs. It is used by [gRPC](https://github.com/grpc). Each `Status` message contains three pieces of data: error code, error message, and error details. You can find out more about this error model and how to work with it in the [API Design Guide](https://cloud.google.com/apis/design/errors).'
 tags:
     - name: Gassless
+    - name: Verifier

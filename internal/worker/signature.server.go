@@ -65,6 +65,7 @@ func NodeExitByGaslessService(ctx context.Context, c *Chain, expiredAt *big.Int)
 		V:         uint32(v),
 		R:         hex.EncodeToString(r[:]),
 		S:         hex.EncodeToString(s[:]),
+		Version:   c.cf.GaslessService.Version,
 	}
 	if c.cf.Chain.EnableGasMode {
 		// get Auth
@@ -178,6 +179,7 @@ func NodeEnterByGaslessService(ctx context.Context, c *Chain, replacedNode commo
 		V:            uint32(v),
 		R:            hex.EncodeToString(r[:]),
 		S:            hex.EncodeToString(s[:]),
+		Version:      c.cf.GaslessService.Version,
 	}
 
 	var enter *gasless.Response
@@ -281,6 +283,7 @@ func UpdateNodeCommissionRateByGaslessService(ctx context.Context, c *Chain, com
 			V:              uint32(v),
 			R:              hex.EncodeToString(r[:]),
 			S:              hex.EncodeToString(s[:]),
+			Version:        c.cf.GaslessService.Version,
 		})
 		if setErr == nil {
 			break
@@ -356,6 +359,7 @@ func UpdateNodeRewardClaimerByGaslessService(ctx context.Context, c *Chain, rewa
 		V:         uint32(v),
 		R:         hex.EncodeToString(r[:]),
 		S:         hex.EncodeToString(s[:]),
+		Version:   c.cf.GaslessService.Version,
 	}
 	// Send signature
 	var setRes *gasless.Response
@@ -460,6 +464,7 @@ func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, 
 		V:             uint32(v),
 		R:             hex.EncodeToString(r[:]),
 		S:             hex.EncodeToString(s[:]),
+		Version:       c.cf.GaslessService.Version,
 	}
 	var reportVerificationRes *gasless.Response
 	var reportVerificationErr error
