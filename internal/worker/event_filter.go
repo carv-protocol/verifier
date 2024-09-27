@@ -2,10 +2,11 @@ package worker
 
 import (
 	"context"
+	"strings"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
-	"strings"
 
 	"github.com/carv-protocol/verifier/pkg/dcap"
 	"github.com/carv-protocol/verifier/pkg/tools"
