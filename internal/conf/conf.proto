@@ -97,4 +97,5 @@ message Signature {
 
 message GaslessService {
   string url = 1;
+  string version = 2;
 }
