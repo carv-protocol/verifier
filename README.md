@@ -183,7 +183,7 @@ chain:
   offset_block: 14400 # arbitrum block time: 0.25 sec. An offset of 14400 starts fetching blocks from 1 hours ago.
 contract:
   addr: "0xFFbB58c8370f99b2ae619328D6B99D77Fef190Cb"
-  tee_addr : "0x7f57004E08ef1702b2b88b87ae01a561ae10F10e"
+  tee_addr: "0x7f57004E08ef1702b2b88b87ae01a561ae10F10e"
   topic1: "0x89a3b784b99180438f3b2027aa89e97c3c3ed66e8dc78a555d7013b39caf1a89"
   topic2: "0x455929120054502ca2ea8194b26e7bb3acb631d30177f6881ffa70581abd4a13"
 #wallet:
