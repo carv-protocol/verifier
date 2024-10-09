@@ -9,42 +9,42 @@ option go_package = "github.com/carv-protocol/verifier/api/gasless;gasless";
 service Gassless {
   rpc ExplorerSendTxNodeEnter (ExplorerSendTxNodeEnterRequest) returns (Response) {
     option (google.api.http) = {
-      post: "/explorer_alphanet/send_tx_node_enter"
+      post: "/explorer/send_tx_node_enter"
       body: "*"
     };
   }
 
   rpc ExplorerSendTxNodeExit(ExplorerSendTxNodeExitRequest) returns (Response) {
     option (google.api.http) = {
-      post: "/explorer_alphanet/send_tx_node_exit"
+      post: "/explorer/send_tx_node_exit"
       body: "*"
     };
   }
 
   rpc ExplorerSendTxModifyCommissionRate(ExplorerSendTxModifyCommissionRateRequest) returns (Response) {
     option (google.api.http) = {
-      post: "/explorer_alphanet/send_tx_modify_commission_rate"
+      post: "/explorer/send_tx_modify_commission_rate"
       body: "*"
     };
   }
 
   rpc ExplorerSendTxSetRewardClaimer(ExplorerSendTxSetRewardClaimerRequest) returns (Response) {
     option (google.api.http) = {
-      post: "/explorer_alphanet/send_tx_set_reward_claimer"
+      post: "/explorer/send_tx_set_reward_claimer"
       body: "*"
     };
   }
 
   rpc ExplorerSendTxNodeReportVerification(ExplorerSendTxNodeReportVerificationRequest) returns (Response) {
     option (google.api.http) = {
-      post: "/explorer_alphanet/send_tx_node_report_verification"
+      post: "/explorer/send_tx_node_report_verification"
       body: "*"
     };
   }
 
   rpc ExplorerReplacedNode(ExplorerReplacedNodeRequest) returns (ExplorerReplacedNodeResponse) {
     option (google.api.http) = {
-      get: "/explorer_alphanet/replaced_node"
+      get: "/explorer/replaced_node"
     };
   }
 }

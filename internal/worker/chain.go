@@ -336,6 +336,8 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 			c.logger.WithContext(ctx).Error("Failed to update node configuration.")
 			return res
 		}
+		// Fix: add delay to make sure gasless server detects the node online event
+		time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
 	}
 
 	// Check if the node is online

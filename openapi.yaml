@@ -6,7 +6,7 @@ info:
     title: ""
     version: 0.0.1
 paths:
-    /explorer_alphanet/replaced_node:
+    /explorer/replaced_node:
         get:
             tags:
                 - Gassless
@@ -23,7 +23,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.gasless.ExplorerReplacedNodeResponse'
-    /explorer_alphanet/send_tx_modify_commission_rate:
+    /explorer/send_tx_modify_commission_rate:
         post:
             tags:
                 - Gassless
@@ -41,7 +41,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.gasless.Response'
-    /explorer_alphanet/send_tx_node_enter:
+    /explorer/send_tx_node_enter:
         post:
             tags:
                 - Gassless
@@ -59,7 +59,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.gasless.Response'
-    /explorer_alphanet/send_tx_node_exit:
+    /explorer/send_tx_node_exit:
         post:
             tags:
                 - Gassless
@@ -77,7 +77,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.gasless.Response'
-    /explorer_alphanet/send_tx_node_report_verification:
+    /explorer/send_tx_node_report_verification:
         post:
             tags:
                 - Gassless
@@ -95,7 +95,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/api.gasless.Response'
-    /explorer_alphanet/send_tx_set_reward_claimer:
+    /explorer/send_tx_set_reward_claimer:
         post:
             tags:
                 - Gassless
