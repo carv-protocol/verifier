@@ -3,33 +3,26 @@ package worker
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/hex"
 	"math/big"
+	"os"
 	"strings"
 	"time"
 
-	"github.com/carv-protocol/verifier/internal/conf"
-	"github.com/carv-protocol/verifier/internal/key_manager"
-	"github.com/carv-protocol/verifier/pkg/contract"
-	"github.com/carv-protocol/verifier/pkg/dcap"
-
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/go-kratos/kratos/v2/log"
+	"github.com/go-kratos/kratos/v2/transport/http"
+	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
-)
 
-const (
-	// Buffer size for channel storing verification results
-	verifyResultChannelCapacity = 10
-
-	// Maximum number of blocks per log query
-	maxBlocksPerQuery = 100
+	"github.com/carv-protocol/verifier/api/gasless"
+	"github.com/carv-protocol/verifier/internal/conf"
+	"github.com/carv-protocol/verifier/internal/key_manager"
+	"github.com/carv-protocol/verifier/pkg/contract"
 )
 
 var (
@@ -37,23 +30,29 @@ var (
 )
 
 type Chain struct {
-	cf              *conf.Bootstrap
-	logger          *log.Helper
-	cAbi            abi.ABI
-	ethClient       *ethclient.Client
-	contractObj     *contract.Contract
-	verifierAddress common.Address
-	verifierPrivKey *ecdsa.PrivateKey
+	cf                         *conf.Bootstrap
+	logger                     *log.Helper
+	ethClient                  *ethclient.Client
+	protocolServiceContractObj *contract.Contract
+	verifierAddress            common.Address
+	verifierPrivKey            *ecdsa.PrivateKey
+	nodeInf                    nodeInf
+	stopChan                   chan struct{}
+	verifyResultList           []verifyResult
+	confirmVrfNodeChan         chan confirmVrfNodesInfo
+	exitNodeChan               chan struct{}
+	errChan                    chan error
+	latestBlockNumber          int64
+	cache                      *cache.Cache
 
-	stopChan          chan struct{}
-	verifyResultChan  chan verifyResult
-	errChan           chan error
-	latestBlockNumber int64
+	gaslessClient gasless.GasslessHTTPClient
 }
 
-type verifyResult struct {
-	attestationID [32]byte
-	result        bool
+type confirmVrfNodesInfo struct {
+	nodeId       uint32
+	vrfNodeIndex uint32
+	requestId    *big.Int
+	deadline     *big.Int
 }
 
 func NewChain(
@@ -66,14 +65,10 @@ func NewChain(
 		return nil, errors.Wrapf(err, "new eth client error, rpc url: %s", bootstrap.Chain.RpcUrl)
 	}
 
-	contractObj, err := contract.NewContract(common.HexToAddress(bootstrap.Contract.Addr), ethClient)
+	// init contract object
+	protocolServiceContractObj, err := contract.NewContract(common.HexToAddress(bootstrap.Contract.Addr), ethClient)
 	if err != nil {
 		return nil, errors.Wrapf(err, "NewContract error")
-	}
-
-	cAbi, err := abi.JSON(strings.NewReader(contract.ContractMetaData.ABI))
-	if err != nil {
-		return nil, errors.Wrap(err, "abi json error")
 	}
 
 	privateKey := key_manager.Inst().PrivateKey()
@@ -84,48 +79,71 @@ func NewChain(
 	}
 
 	verifierAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
+	// get nodeInfor
+	nodeInfos, err := protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, verifierAddress)
+
+	cacheIns := cache.New(5*time.Minute, 10*time.Minute)
+
+	// init gasless client
+	httpClient, err := http.NewClient(ctx, http.WithTimeout(30*time.Second), http.WithEndpoint(bootstrap.GaslessService.Url))
+	if err != nil {
+		return nil, errors.Wrapf(err, "new http client error, url: %s", bootstrap.GaslessService.Url)
+	}
+	gaslessClient := gasless.NewGasslessHTTPClient(httpClient)
 
 	return &Chain{
-		cf:              bootstrap,
-		logger:          logger,
-		cAbi:            cAbi,
-		ethClient:       ethClient,
-		contractObj:     contractObj,
-		verifierAddress: verifierAddress,
-		verifierPrivKey: privateKey,
-
-		stopChan:         make(chan struct{}),
-		verifyResultChan: make(chan verifyResult, verifyResultChannelCapacity),
-		errChan:          make(chan error),
+		cf:                         bootstrap,
+		logger:                     logger,
+		ethClient:                  ethClient,
+		protocolServiceContractObj: protocolServiceContractObj,
+		verifierAddress:            verifierAddress,
+		verifierPrivKey:            privateKey,
+		nodeInf: nodeInf{
+			nodeId:         nodeInfos.Id,
+			nodeListIndex:  nodeInfos.ListIndex,
+			rewardClaimer:  nodeInfos.Claimer,
+			commissionRate: nodeInfos.CommissionRate,
+		},
+		stopChan:           make(chan struct{}),
+		confirmVrfNodeChan: make(chan confirmVrfNodesInfo),
+		verifyResultList:   make([]verifyResult, 0),
+		exitNodeChan:       make(chan struct{}),
+		errChan:            make(chan error),
+		latestBlockNumber:  bootstrap.Chain.StartBlock,
+		cache:              cacheIns,
+		gaslessClient:      gaslessClient,
 	}, nil
 }
 
 func (c *Chain) Start(ctx context.Context) error {
-	c.latestBlockNumber = c.cf.Chain.GetStartBlock()
-
 	// Retrieve the latest block number if it has not been specified
 	if c.latestBlockNumber == 0 {
 		blockNumber, err := c.ethClient.BlockNumber(ctx)
 		if err != nil {
 			return errors.Wrapf(err, "chain [%s] get BlockNumber error", c.cf.Chain.ChainName)
 		}
-
 		c.latestBlockNumber = int64(blockNumber)
+		c.logger.WithContext(ctx).Infof("chain [%s] latestBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 	}
-
 	// Apply the offset to begin verification starting from the latest unverified attestation
 	c.latestBlockNumber -= c.cf.Chain.GetOffsetBlock()
-
 	c.logger.WithContext(ctx).Infof("chain [%s] startBlockNumber: %d", c.cf.Chain.ChainName, c.latestBlockNumber)
 
-	// Monitor and verify on-chain TEE attestations
-	go c.queryAndVerify(ctx)
-
-	// Batch post verification results to the blockchain
-	go c.batchPost(ctx)
-
-	// Monitor errors arising from querying and posting processes
-	go c.monitorErrors(ctx)
+	nodeInfos, err := c.protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, c.verifierAddress)
+	if err != nil {
+		c.logger.Errorf("NodeInfos error: %s", err.Error())
+	}
+	c.logger.WithContext(ctx).Infof("nodeInfos: %v", nodeInfos)
+	if c.beforeScanEvent(ctx, nodeInfos.Id, nodeInfos.Claimer, nodeInfos.CommissionRate) {
+		// Monitor and verify on-chain TEE attestations
+		go c.queryAndVerify(ctx)
+		//	// submit verify result to gasless service
+		go c.submitVerifyResult(ctx)
+		//	// Monitor errors arising from querying and posting processes
+		go c.monitorErrors(ctx)
+	}
+	// monitor exit
+	go c.monitorExit(ctx)
 
 	return nil
 }
@@ -135,16 +153,24 @@ func (c *Chain) Stop(ctx context.Context) error {
 
 	close(c.stopChan)
 
-	// todo stop
-
 	c.logger.WithContext(ctx).Infof("chain [%s] stopped", c.cf.Chain.ChainName)
+	// exit node by gasless
+	// Get the current timestamp
+	timestamp := big.NewInt(time.Now().Unix())
+	expiredTime := new(big.Int).Add(timestamp, big.NewInt(c.cf.Signature.ExpiredTime))
+	exitRes, err := NodeExitByGaslessService(ctx, c, expiredTime)
+	if err != nil {
+		return errors.Wrap(err, "exit node by gasless error")
+	}
+	c.logger.WithContext(ctx).Infof("exitRes: %v", exitRes)
 
 	return nil
 }
 
 // Query on-chain events and verify the TEE attestation
 func (c *Chain) queryAndVerify(ctx context.Context) {
-	eventQueryTicker := time.NewTicker(1 * time.Second)
+	queryTicker := c.cf.Chain.QueryTicker
+	eventQueryTicker := time.NewTicker(time.Duration(queryTicker) * time.Second)
 
 	for {
 		select {
@@ -161,29 +187,38 @@ func (c *Chain) queryAndVerify(ctx context.Context) {
 	}
 }
 
-// Batch verify results and post them on-chain
-func (c *Chain) batchPost(ctx context.Context) {
-	batchVerifyResultTicker := time.NewTicker(10 * time.Second)
-	resultList := make([]verifyResult, 0)
-
+func (c *Chain) submitVerifyResult(ctx context.Context) {
 	for {
 		select {
-		case r := <-c.verifyResultChan:
-			resultList = append(resultList, r)
-		case <-batchVerifyResultTicker.C:
-			if len(resultList) == 0 {
-				continue
+		case cvn := <-c.confirmVrfNodeChan:
+			//delay x seconds
+			if c.cf.Chain.ReportDelay == 0 {
+				c.cf.Chain.ReportDelay = 30
 			}
-
-			go func(rl []verifyResult) {
-				if err := c.sendBatchResult(ctx, rl); err != nil {
-					c.errChan <- err
+			time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
+			go func(cvn confirmVrfNodesInfo) {
+				if cvn.deadline.Cmp(big.NewInt(time.Now().Unix())) == -1 {
+					return
 				}
-			}(resultList[:])
+				for i := 0; i < len(c.verifyResultList); i++ {
+					if c.verifyResultList[i].requestId.Cmp(cvn.requestId) == 0 && !c.verifyResultList[i].isReported {
+						resultEnum := 0
+						if !c.verifyResultList[i].result {
+							resultEnum = 1
+						}
+						reportRes, err := NodeReportVerificationBatchByGaslessService(ctx, c, c.verifyResultList[i].attestationID, uint8(resultEnum), cvn.vrfNodeIndex)
+						if err != nil {
+							continue
+						}
+						if reportRes {
+							c.verifyResultList[i].isReported = true
+						}
+					}
+				}
+			}(cvn)
 
-			resultList = make([]verifyResult, 0)
 		case <-c.stopChan:
-			c.logger.WithContext(ctx).Infof("chain [%s] batchPost stopping", c.cf.Chain.ChainName)
+			c.logger.WithContext(ctx).Infof("chain [%s] submitVerifyResult stopping", c.cf.Chain.ChainName)
 			return
 		}
 	}
@@ -209,41 +244,6 @@ func (c *Chain) monitorErrors(ctx context.Context) {
 	}
 }
 
-func (c *Chain) SendAttestationTrx(ctx context.Context, attestationIds [][32]byte, results []bool) (string, error) {
-	nonce, err := c.ethClient.PendingNonceAt(ctx, c.verifierAddress)
-	if err != nil {
-		return "", errors.Wrap(err, "eth client get Nonce error")
-	}
-
-	gasPrice, err := c.ethClient.SuggestGasPrice(ctx)
-	if err != nil {
-		return "", errors.Wrap(err, "eth client get SuggestGasPrice error")
-	}
-
-	chainID, err := c.ethClient.ChainID(ctx)
-	if err != nil {
-		return "", errors.Wrap(err, "eth client get ChainID error")
-	}
-
-	auth, err := bind.NewKeyedTransactorWithChainID(c.verifierPrivKey, chainID)
-	if err != nil {
-		return "", errors.Wrap(err, "bind NewKeyedTransactorWithChainID error")
-	}
-	auth.Nonce = big.NewInt(int64(nonce))
-	auth.GasPrice = gasPrice
-
-	tx, err := c.contractObj.VerifyAttestationBatch(auth, attestationIds, results)
-	if err != nil {
-		return "", errors.Wrap(err, "contract VerifyAttestationBatch error")
-	}
-
-	txHash := tx.Hash().Hex()
-
-	c.logger.WithContext(ctx).Infof("tx hash: %s", txHash)
-
-	return txHash, nil
-}
-
 func (c *Chain) queryChain(ctx context.Context) error {
 	startBlockNumber := c.latestBlockNumber
 	endBlockNumber, err := c.ethClient.BlockNumber(ctx)
@@ -257,8 +257,8 @@ func (c *Chain) queryChain(ctx context.Context) error {
 	}
 
 	// Limit the maximum number of blocks that can be queried per run
-	if startBlockNumber+maxBlocksPerQuery < int64(endBlockNumber) {
-		endBlockNumber = uint64(startBlockNumber + maxBlocksPerQuery)
+	if startBlockNumber+c.cf.Chain.MaxBlockPerQuery < int64(endBlockNumber) {
+		endBlockNumber = uint64(startBlockNumber + c.cf.Chain.MaxBlockPerQuery)
 	}
 
 	query := ethereum.FilterQuery{
@@ -269,7 +269,9 @@ func (c *Chain) queryChain(ctx context.Context) error {
 		},
 		Topics: [][]common.Hash{
 			{
-				common.HexToHash(c.cf.Contract.Topic),
+				common.HexToHash(c.cf.Contract.Topic1),
+				common.HexToHash(c.cf.Contract.Topic2),
+				common.HexToHash(c.cf.Contract.Topic3),
 			},
 		},
 	}
@@ -279,39 +281,36 @@ func (c *Chain) queryChain(ctx context.Context) error {
 		return errors.Wrap(err, "client FilterLogs error")
 	}
 
+	var logFilter LogFilter
 	for _, cLog := range cLogs {
-		unpackedData, err := c.contractObj.ParseReportTeeAttestation(cLog)
-		if err != nil {
-			return errors.Wrap(err, "contract ParseReportTeeAttestation error")
+		// teeReportVerificationBatch Event
+		if strings.EqualFold(cLog.Topics[0].String(), c.cf.Contract.Topic1) {
+			err1 := logFilter.NodeReportVerificationBatchLogFilter(ctx, c, cLog)
+			if err1 != nil {
+				log.Errorf("NodeReportVerificationBatchLogFilter error: %s", err1.Error())
+				continue
+			}
 		}
 
-		logInfo := LogInfo{
-			BlockNumber:     cLog.BlockNumber,
-			ContractAddress: cLog.Address,
-			TxHash:          cLog.TxHash,
-			TxIndex:         unpackedData.Raw.TxIndex,
-			TeeAddress:      unpackedData.TeeAddress,
-			CampaignId:      unpackedData.CampaignId,
+		if strings.EqualFold(cLog.Topics[0].String(), c.cf.Contract.Topic2) {
+			err2 := logFilter.ConfirmVrfNodesLogFilter(ctx, c, cLog)
+			if err2 != nil {
+				log.Errorf("NodeReportVerificationLogFilter error: %s", err2.Error())
+				continue
+			}
+
 		}
 
-		// Verify attestation
-		result, err := dcap.VerifyAttestation(unpackedData.Attestation, c.cf)
-		if err != nil {
-			// If attestation is unable to be parsed and verified, this attestation should be ignored by all verifiers
-			c.logger.WithContext(ctx).Error(
-				"verify failed, attestation id: %s, error: %s",
-				hex.EncodeToString(unpackedData.AttestationId[:]),
-				err.Error(),
-			)
-			continue
+		// NodeClear (exit)
+		if strings.EqualFold(cLog.Topics[0].String(), c.cf.Contract.Topic3) {
+			err3 := logFilter.NodeClearLogFilter(ctx, c, cLog)
+			if err3 != nil {
+				log.Errorf("NodeClearLogFilter error: %s", err3.Error())
+				continue
+			}
+
 		}
 
-		c.verifyResultChan <- verifyResult{
-			attestationID: unpackedData.AttestationId,
-			result:        result,
-		}
-
-		c.logger.WithContext(ctx).Infof("logInfo: %+v", logInfo)
 	}
 
 	c.logger.WithContext(ctx).Infof(
@@ -325,18 +324,145 @@ func (c *Chain) queryChain(ctx context.Context) error {
 	return nil
 }
 
-// Batch process multiple attestations across a specified range of blocks
-func (c *Chain) sendBatchResult(ctx context.Context, resultList []verifyResult) error {
-	attestationIds := make([][32]byte, len(resultList))
-	verifyResults := make([]bool, len(resultList))
-	for i, r := range resultList {
-		attestationIds[i] = r.attestationID
-		verifyResults[i] = r.result
-	}
-	_, err := c.SendAttestationTrx(ctx, attestationIds, verifyResults)
-	if err != nil {
-		return errors.Wrapf(err, "chain [%s] send batch tx failed", c.cf.Chain.ChainName)
+func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaimer common.Address, commissionRate uint32) bool {
+	nodeAddress := c.verifierAddress
+	// Get the current timestamp
+	timestamp := big.NewInt(time.Now().Unix())
+	expiredTime := new(big.Int).Add(timestamp, big.NewInt(c.cf.Signature.ExpiredTime))
+
+	// Not the first time setup, update config if needed.
+	if nodeID != 0 {
+		if res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime); !res {
+			c.logger.WithContext(ctx).Error("Failed to update node configuration.")
+			return res
+		}
+		// Fix: add delay to make sure gasless server detects the node online event
+		time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
 	}
 
-	return nil
+	// Check if the node is online
+	isOnline, err := c.checkIsOnline(nodeAddress)
+	if err != nil {
+		c.logger.Errorf("checkIsOnline error: %s", err.Error())
+		return false
+	}
+
+	// if node is not online or first time register on chain
+	if !isOnline {
+		c.logger.Errorf("node [%s] is offline, waiting online", nodeAddress.Hex())
+		replaceNodeReq := &gasless.ExplorerReplacedNodeRequest{
+			VerifierAddr: nodeAddress.Hex(),
+		}
+		replacedNodeResp, err := c.gaslessClient.ExplorerReplacedNode(context.Background(), replaceNodeReq)
+		if err != nil {
+			return false
+		}
+		replaceNode := common.HexToAddress(replacedNodeResp.Data.ReplacedAddr)
+		// Send Transaction
+		enterRes, err := NodeEnterByGaslessService(context.Background(), c, replaceNode, expiredTime)
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("Failed to launch verifier node: %s: %s", err.Error())
+		}
+
+		if !enterRes {
+			c.logger.WithContext(ctx).Error("enterRes is false")
+			return enterRes
+		}
+
+		// Need to set commission and rewards if it is first time setup
+		if nodeID == 0 {
+			// Fix: add delay to make sure gasless server detects the node online event
+			time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
+
+			res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime)
+			if !res {
+				c.logger.WithContext(ctx).Error("Failed to update node configuration.")
+			}
+			return res
+		}
+
+	}
+	return true
+}
+
+func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer common.Address, commissionRate uint32, expiredTime *big.Int) bool {
+	c.logger.WithContext(ctx).Infof(
+		"Update node config if needed. On-chain claimer: %s, config claimer: %s; on-chain commission: %d, config commission: %d",
+		rewardClaimer.Hex(),
+		c.cf.Wallet.RewardClaimerAddr,
+		commissionRate,
+		c.cf.Wallet.CommissionRate,
+	)
+	// gas model: reward claimer is current node address
+	if !c.cf.Chain.EnableGasMode {
+		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()) {
+			c.logger.WithContext(ctx).Infof("Reward recipient address updated to %s.", c.cf.Wallet.RewardClaimerAddr)
+			// Send Transaction
+			updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
+			if err2 != nil {
+				c.logger.WithContext(ctx).Errorf("Failed to update reward recipient address: %s", err2.Error())
+			}
+			return updateRewardClaimerRes
+		}
+	}
+
+	if int(c.cf.Wallet.CommissionRate) != int(commissionRate) {
+		c.logger.WithContext(ctx).Infof("Commission rate updated to %d.", c.cf.Wallet.CommissionRate)
+		// Send Transaction
+		updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
+		if err != nil {
+			c.logger.WithContext(ctx).Errorf("Failed to update commission rate: %s", err.Error())
+		}
+		return updateNodeCommissionRateRes
+	}
+
+	return true
+}
+
+// Check node is or not online
+func (c *Chain) checkIsOnline(nodeAddress common.Address) (bool, error) {
+	nodeInfos, err := c.protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, nodeAddress)
+	if err != nil {
+		return false, err
+	}
+	return nodeInfos.Active, nil
+}
+
+func (c *Chain) GetTransactionConfig(ctx context.Context) (*bind.TransactOpts, error) {
+	nonce, err := c.ethClient.PendingNonceAt(ctx, c.verifierAddress)
+	if err != nil {
+		return nil, errors.Wrap(err, "eth client get Nonce error")
+	}
+	// prod gasPrice should be changed
+	gasPrice, err := c.ethClient.SuggestGasPrice(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "eth client get SuggestGasPrice error")
+	}
+
+	chainID, err := c.ethClient.ChainID(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "eth client get ChainID error")
+	}
+	auth, err := bind.NewKeyedTransactorWithChainID(c.verifierPrivKey, chainID)
+	if err != nil {
+		return nil, errors.Wrap(err, "bind NewKeyedTransactorWithChainID error")
+	}
+	auth.Nonce = big.NewInt(int64(nonce))
+	auth.GasPrice = gasPrice
+	//TODO Set gasLimit
+
+	return auth, nil
+}
+
+func (c *Chain) monitorExit(ctx context.Context) {
+	for {
+		select {
+		case <-c.exitNodeChan:
+			c.logger.WithContext(ctx).Infof("Verifer node taken offline because the network has reached the maximum limit of 5,000 active nodes.")
+			os.Exit(0)
+		case <-c.stopChan:
+			c.logger.WithContext(ctx).Infof("chain [%s] monitorExit stopping", c.cf.Chain.ChainName)
+			return
+		}
+	}
 }

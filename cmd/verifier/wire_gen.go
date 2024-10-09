@@ -7,11 +7,7 @@
 package main
 
 import (
-	"github.com/carv-protocol/verifier/internal/biz"
 	"github.com/carv-protocol/verifier/internal/conf"
-	"github.com/carv-protocol/verifier/internal/data"
-	"github.com/carv-protocol/verifier/internal/server"
-	"github.com/carv-protocol/verifier/internal/service"
 	"github.com/carv-protocol/verifier/internal/worker"
 	"github.com/go-kratos/kratos/v2"
 	"github.com/go-kratos/kratos/v2/log"
@@ -25,15 +21,8 @@ import (
 
 // wireApp init kratos application.
 func wireApp(bootstrap *conf.Bootstrap, logger log.Logger, helper *log.Helper) (*kratos.App, func(), error) {
-	dataData, cleanup := data.NewData(bootstrap, helper)
-	verifierRepo := data.NewVerifierRepo(dataData)
-	verifierUsecase := biz.NewVerifierUsecase(verifierRepo, helper)
-	verifierService := service.NewVerifierService(verifierUsecase)
-	grpcServer := server.NewGRPCServer(bootstrap, verifierService)
-	httpServer := server.NewHTTPServer(bootstrap, verifierService)
-	workerServer := worker.NewWorkerServer(bootstrap, helper)
-	app := newApp(logger, grpcServer, httpServer, workerServer)
+	server := worker.NewWorkerServer(bootstrap, helper)
+	app := newApp(logger, server)
 	return app, func() {
-		cleanup()
 	}, nil
 }

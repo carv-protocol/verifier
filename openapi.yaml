@@ -3,9 +3,116 @@
 
 openapi: 3.0.3
 info:
-    title: Verifier API
+    title: ""
     version: 0.0.1
 paths:
+    /explorer/replaced_node:
+        get:
+            tags:
+                - Gassless
+            operationId: Gassless_ExplorerReplacedNode
+            parameters:
+                - name: verifierAddr
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.gasless.ExplorerReplacedNodeResponse'
+    /explorer/send_tx_modify_commission_rate:
+        post:
+            tags:
+                - Gassless
+            operationId: Gassless_ExplorerSendTxModifyCommissionRate
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.gasless.ExplorerSendTxModifyCommissionRateRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.gasless.Response'
+    /explorer/send_tx_node_enter:
+        post:
+            tags:
+                - Gassless
+            operationId: Gassless_ExplorerSendTxNodeEnter
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.gasless.ExplorerSendTxNodeEnterRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.gasless.Response'
+    /explorer/send_tx_node_exit:
+        post:
+            tags:
+                - Gassless
+            operationId: Gassless_ExplorerSendTxNodeExit
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.gasless.ExplorerSendTxNodeExitRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.gasless.Response'
+    /explorer/send_tx_node_report_verification:
+        post:
+            tags:
+                - Gassless
+            operationId: Gassless_ExplorerSendTxNodeReportVerification
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.gasless.ExplorerSendTxNodeReportVerificationRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.gasless.Response'
+    /explorer/send_tx_set_reward_claimer:
+        post:
+            tags:
+                - Gassless
+            operationId: Gassless_ExplorerSendTxSetRewardClaimer
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/api.gasless.ExplorerSendTxSetRewardClaimerRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/api.gasless.Response'
     /verifier/{name}:
         get:
             tags:
@@ -26,10 +133,129 @@ paths:
                                 $ref: '#/components/schemas/verifier.v1.HelloReply'
 components:
     schemas:
+        api.gasless.ExplorerReplacedNodeResponse:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: uint32
+                msg:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/api.gasless.ReplacedNode'
+        api.gasless.ExplorerSendTxModifyCommissionRateRequest:
+            type: object
+            properties:
+                signer:
+                    type: string
+                commissionRate:
+                    type: integer
+                    format: uint32
+                expiredAt:
+                    type: string
+                v:
+                    type: integer
+                    format: uint32
+                r:
+                    type: string
+                s:
+                    type: string
+                version:
+                    type: string
+        api.gasless.ExplorerSendTxNodeEnterRequest:
+            type: object
+            properties:
+                signer:
+                    type: string
+                replacedNode:
+                    type: string
+                expiredAt:
+                    type: string
+                v:
+                    type: integer
+                    format: uint32
+                r:
+                    type: string
+                s:
+                    type: string
+                version:
+                    type: string
+        api.gasless.ExplorerSendTxNodeExitRequest:
+            type: object
+            properties:
+                signer:
+                    type: string
+                expiredAt:
+                    type: string
+                v:
+                    type: integer
+                    format: uint32
+                r:
+                    type: string
+                s:
+                    type: string
+                version:
+                    type: string
+        api.gasless.ExplorerSendTxNodeReportVerificationRequest:
+            type: object
+            properties:
+                signer:
+                    type: string
+                attestationId:
+                    type: string
+                result:
+                    type: integer
+                    format: uint32
+                index:
+                    type: integer
+                    format: uint32
+                v:
+                    type: integer
+                    format: uint32
+                r:
+                    type: string
+                s:
+                    type: string
+                version:
+                    type: string
+        api.gasless.ExplorerSendTxSetRewardClaimerRequest:
+            type: object
+            properties:
+                signer:
+                    type: string
+                claimer:
+                    type: string
+                expiredAt:
+                    type: string
+                v:
+                    type: integer
+                    format: uint32
+                r:
+                    type: string
+                s:
+                    type: string
+                version:
+                    type: string
+        api.gasless.ReplacedNode:
+            type: object
+            properties:
+                replacedAddr:
+                    type: string
+        api.gasless.Response:
+            type: object
+            properties:
+                code:
+                    type: integer
+                    format: uint32
+                msg:
+                    type: string
+                data:
+                    type: string
         verifier.v1.HelloReply:
             type: object
             properties:
                 message:
                     type: string
 tags:
+    - name: Gassless
     - name: Verifier
