@@ -137,7 +137,7 @@ wallet:
 ```
 
 ```shell
-docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf carvprotocol/verifier:alphanet
+docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf carvprotocol/verifier:mainnet
 ```
 
 #### Use Keystore (mode = 2)
@@ -168,7 +168,7 @@ wallet:
 ```
 
 ```shell
-docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf -v /<Path To Keystore direction>:/data/keystore carvprotocol/verifier:alphanet
+docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf -v /<Path To Keystore direction>:/data/keystore carvprotocol/verifier:mainnet
 ```
 
 

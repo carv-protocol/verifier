@@ -1,7 +1,7 @@
 GOHOSTOS:=$(shell go env GOHOSTOS)
 GOPATH:=$(shell go env GOPATH)
 #VERSION=$(shell git describe --tags --always)
-VERSION=$(shell git rev-parse --abbrev-ref HEAD)_${shell git rev-parse origin/verifier-alphanet}
+VERSION=$(shell git rev-parse --abbrev-ref HEAD)_${shell git rev-parse origin/main}
 ifeq ($(GOHOSTOS), windows)
 	#the `find.exe` is different from `find` in bash/shell.
 	#to see https://docs.microsoft.com/en-us/windows-server/administration/windows-commands/find.

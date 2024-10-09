@@ -34,7 +34,7 @@ func (l *LogFilter) NodeReportVerificationBatchLogFilter(ctx context.Context, c 
 		result, err := dcap.VerifyAttestation(attestationInfo, identityJson, tcbJson, trustedJson)
 		if err != nil {
 			// If attestation is unable to be parsed and verified, this attestation should be ignored by all verifiers
-			c.logger.WithContext(ctx).Errorf(
+			c.logger.WithContext(ctx).Error(
 				"verify failed, attestation id: %s, error: %s",
 				attestationID,
 				err.Error(),
@@ -62,7 +62,7 @@ func (l *LogFilter) ConfirmVrfNodesLogFilter(ctx context.Context, c *Chain, cLog
 		return errors.Wrap(err, "contract ParseConfirmVrfNodes error")
 	}
 	if len(unpackedData.VrfChosen) == 0 {
-		c.logger.WithContext(ctx).Info("no vrf node chosen")
+		c.logger.WithContext(ctx).Infof("no vrf node chosen")
 		return nil
 	}
 	searchNodeIndex := -1
@@ -89,7 +89,7 @@ func (l *LogFilter) ConfirmVrfNodesLogFilter(ctx context.Context, c *Chain, cLog
 func (l *LogFilter) NodeClearLogFilter(ctx context.Context, c *Chain, log types.Log) error {
 	unpackedData, err := c.protocolServiceContractObj.ParseNodeClear(log)
 	if err != nil {
-		c.logger.WithContext(ctx).Errorf("contract ParseNodeClear error: %s", err.Error())
+		c.logger.WithContext(ctx).Error("contract ParseNodeClear error: %s", err.Error())
 		return errors.Wrap(err, "contract ParseNodeClear error")
 	}
 	// add now active check

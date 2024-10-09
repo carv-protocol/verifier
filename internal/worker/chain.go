@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"os"
 	"strings"
@@ -85,6 +86,7 @@ func NewChain(
 	cacheIns := cache.New(5*time.Minute, 10*time.Minute)
 
 	// init gasless client
+	fmt.Println(bootstrap.GaslessService.Url)
 	httpClient, err := http.NewClient(ctx, http.WithTimeout(30*time.Second), http.WithEndpoint(bootstrap.GaslessService.Url))
 	if err != nil {
 		return nil, errors.Wrapf(err, "new http client error, url: %s", bootstrap.GaslessService.Url)
@@ -336,6 +338,8 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 			c.logger.WithContext(ctx).Error("Failed to update node configuration.")
 			return res
 		}
+		// Fix: add delay to make sure gasless server detects the node online event
+		time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
 	}
 
 	// Check if the node is online

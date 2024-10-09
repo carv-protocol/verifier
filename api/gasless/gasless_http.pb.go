@@ -37,12 +37,12 @@ type GasslessHTTPServer interface {
 
 func RegisterGasslessHTTPServer(s *http.Server, srv GasslessHTTPServer) {
 	r := s.Route("/")
-	r.POST("/explorer_alphanet/send_tx_node_enter", _Gassless_ExplorerSendTxNodeEnter0_HTTP_Handler(srv))
-	r.POST("/explorer_alphanet/send_tx_node_exit", _Gassless_ExplorerSendTxNodeExit0_HTTP_Handler(srv))
-	r.POST("/explorer_alphanet/send_tx_modify_commission_rate", _Gassless_ExplorerSendTxModifyCommissionRate0_HTTP_Handler(srv))
-	r.POST("/explorer_alphanet/send_tx_set_reward_claimer", _Gassless_ExplorerSendTxSetRewardClaimer0_HTTP_Handler(srv))
-	r.POST("/explorer_alphanet/send_tx_node_report_verification", _Gassless_ExplorerSendTxNodeReportVerification0_HTTP_Handler(srv))
-	r.GET("/explorer_alphanet/replaced_node", _Gassless_ExplorerReplacedNode0_HTTP_Handler(srv))
+	r.POST("/explorer/send_tx_node_enter", _Gassless_ExplorerSendTxNodeEnter0_HTTP_Handler(srv))
+	r.POST("/explorer/send_tx_node_exit", _Gassless_ExplorerSendTxNodeExit0_HTTP_Handler(srv))
+	r.POST("/explorer/send_tx_modify_commission_rate", _Gassless_ExplorerSendTxModifyCommissionRate0_HTTP_Handler(srv))
+	r.POST("/explorer/send_tx_set_reward_claimer", _Gassless_ExplorerSendTxSetRewardClaimer0_HTTP_Handler(srv))
+	r.POST("/explorer/send_tx_node_report_verification", _Gassless_ExplorerSendTxNodeReportVerification0_HTTP_Handler(srv))
+	r.GET("/explorer/replaced_node", _Gassless_ExplorerReplacedNode0_HTTP_Handler(srv))
 }
 
 func _Gassless_ExplorerSendTxNodeEnter0_HTTP_Handler(srv GasslessHTTPServer) func(ctx http.Context) error {
@@ -193,7 +193,7 @@ func NewGasslessHTTPClient(client *http.Client) GasslessHTTPClient {
 
 func (c *GasslessHTTPClientImpl) ExplorerReplacedNode(ctx context.Context, in *ExplorerReplacedNodeRequest, opts ...http.CallOption) (*ExplorerReplacedNodeResponse, error) {
 	var out ExplorerReplacedNodeResponse
-	pattern := "/explorer_alphanet/replaced_node"
+	pattern := "/explorer/replaced_node"
 	path := binding.EncodeURL(pattern, in, true)
 	opts = append(opts, http.Operation(OperationGasslessExplorerReplacedNode))
 	opts = append(opts, http.PathTemplate(pattern))
@@ -206,7 +206,7 @@ func (c *GasslessHTTPClientImpl) ExplorerReplacedNode(ctx context.Context, in *E
 
 func (c *GasslessHTTPClientImpl) ExplorerSendTxModifyCommissionRate(ctx context.Context, in *ExplorerSendTxModifyCommissionRateRequest, opts ...http.CallOption) (*Response, error) {
 	var out Response
-	pattern := "/explorer_alphanet/send_tx_modify_commission_rate"
+	pattern := "/explorer/send_tx_modify_commission_rate"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationGasslessExplorerSendTxModifyCommissionRate))
 	opts = append(opts, http.PathTemplate(pattern))
@@ -219,7 +219,7 @@ func (c *GasslessHTTPClientImpl) ExplorerSendTxModifyCommissionRate(ctx context.
 
 func (c *GasslessHTTPClientImpl) ExplorerSendTxNodeEnter(ctx context.Context, in *ExplorerSendTxNodeEnterRequest, opts ...http.CallOption) (*Response, error) {
 	var out Response
-	pattern := "/explorer_alphanet/send_tx_node_enter"
+	pattern := "/explorer/send_tx_node_enter"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationGasslessExplorerSendTxNodeEnter))
 	opts = append(opts, http.PathTemplate(pattern))
@@ -232,7 +232,7 @@ func (c *GasslessHTTPClientImpl) ExplorerSendTxNodeEnter(ctx context.Context, in
 
 func (c *GasslessHTTPClientImpl) ExplorerSendTxNodeExit(ctx context.Context, in *ExplorerSendTxNodeExitRequest, opts ...http.CallOption) (*Response, error) {
 	var out Response
-	pattern := "/explorer_alphanet/send_tx_node_exit"
+	pattern := "/explorer/send_tx_node_exit"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationGasslessExplorerSendTxNodeExit))
 	opts = append(opts, http.PathTemplate(pattern))
@@ -245,7 +245,7 @@ func (c *GasslessHTTPClientImpl) ExplorerSendTxNodeExit(ctx context.Context, in 
 
 func (c *GasslessHTTPClientImpl) ExplorerSendTxNodeReportVerification(ctx context.Context, in *ExplorerSendTxNodeReportVerificationRequest, opts ...http.CallOption) (*Response, error) {
 	var out Response
-	pattern := "/explorer_alphanet/send_tx_node_report_verification"
+	pattern := "/explorer/send_tx_node_report_verification"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationGasslessExplorerSendTxNodeReportVerification))
 	opts = append(opts, http.PathTemplate(pattern))
@@ -258,7 +258,7 @@ func (c *GasslessHTTPClientImpl) ExplorerSendTxNodeReportVerification(ctx contex
 
 func (c *GasslessHTTPClientImpl) ExplorerSendTxSetRewardClaimer(ctx context.Context, in *ExplorerSendTxSetRewardClaimerRequest, opts ...http.CallOption) (*Response, error) {
 	var out Response
-	pattern := "/explorer_alphanet/send_tx_set_reward_claimer"
+	pattern := "/explorer/send_tx_set_reward_claimer"
 	path := binding.EncodeURL(pattern, in, false)
 	opts = append(opts, http.Operation(OperationGasslessExplorerSendTxSetRewardClaimer))
 	opts = append(opts, http.PathTemplate(pattern))
