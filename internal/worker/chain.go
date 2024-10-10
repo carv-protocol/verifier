@@ -81,6 +81,9 @@ func NewChain(
 	verifierAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 	// get nodeInfor
 	nodeInfos, err := protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, verifierAddress)
+	if err != nil {
+		return nil, errors.Wrapf(err, "get node info failed. Address: %s", verifierAddress)
+	}
 
 	cacheIns := cache.New(5*time.Minute, 10*time.Minute)
 

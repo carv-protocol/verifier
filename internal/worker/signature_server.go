@@ -472,7 +472,6 @@ func NodeReportVerificationBatchByGaslessService(ctx context.Context, c *Chain, 
 		c.logger.WithContext(ctx).Infof("NodeReportVerificationBatchByGaslessService try %d", i+1)
 		reportVerificationRes, reportVerificationErr = c.gaslessClient.ExplorerSendTxNodeReportVerification(ctx, reportVerificationRequest)
 		if reportVerificationErr == nil {
-			c.logger.WithContext(ctx).Infof("NodeReportVerificationBatchByGaslessService failed %s", reportVerificationRes)
 			break
 		}
 		time.Sleep(2 * time.Second)
