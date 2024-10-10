@@ -39,5 +39,5 @@ signature:
   domain_version: "1.0.0"
   expired_time: 3600
 gasless_service:
-  url: "https://dev-interface.carv.io"
+  url: "https://interface.carv.io"
   version: "1.0.0"
