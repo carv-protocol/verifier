@@ -40,4 +40,4 @@ signature:
   expired_time: 3600
 gasless_service:
   url: "https://interface.carv.io"
-  version: "0.0.1"
+  version: "1.0.0"
