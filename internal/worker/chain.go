@@ -399,9 +399,9 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 			c.logger.WithContext(ctx).Infof("Reward recipient address updated to %s.", c.cf.Wallet.RewardClaimerAddr)
 			// Send Transaction
 			updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
-			if err2 != nil || !updateRewardClaimerRes { {
+			if err2 != nil || !updateRewardClaimerRes {
 				c.logger.WithContext(ctx).Errorf("Failed to update reward recipient address: %s", err2.Error())
-				return errors.New("Failed to update reward recipient address")
+				return false
 			}
 		}
 	}
@@ -412,7 +412,7 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 		updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
 		if err != nil || !updateNodeCommissionRateRes {
 			c.logger.WithContext(ctx).Errorf("Failed to update commission rate: %s", err.Error())
-			return errors.New("Failed to update coommission rate")
+			return false
 		}
 	}
 
