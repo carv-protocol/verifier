@@ -387,11 +387,11 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 
 func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer common.Address, commissionRate uint32, expiredTime *big.Int) bool {
 	c.logger.WithContext(ctx).Infof(
-		"Update node config if needed. On-chain claimer: %s, config claimer: %s; on-chain commission: %d, config commission: %d",
+		"Update node config if needed. On-chain claimer: %s, config claimer: %s; on-chain commission: %d, config commission: %.2f",
 		rewardClaimer.Hex(),
 		c.cf.Wallet.RewardClaimerAddr,
 		commissionRate,
-		c.cf.Wallet.CommissionRate,
+		c.cf.Wallet.CommissionRate/100,
 	)
 	// gas model: reward claimer is current node address
 	if !c.cf.Chain.EnableGasMode {
@@ -399,10 +399,10 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 			c.logger.WithContext(ctx).Infof("Reward recipient address updated to %s.", c.cf.Wallet.RewardClaimerAddr)
 			// Send Transaction
 			updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
-			if err2 != nil {
+			if err2 != nil || !updateRewardClaimerRes { {
 				c.logger.WithContext(ctx).Errorf("Failed to update reward recipient address: %s", err2.Error())
+				return errors.New("Failed to update reward recipient address")
 			}
-			return updateRewardClaimerRes
 		}
 	}
 
@@ -410,10 +410,10 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 		c.logger.WithContext(ctx).Infof("Commission rate updated to %d.", c.cf.Wallet.CommissionRate)
 		// Send Transaction
 		updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
-		if err != nil {
+		if err != nil || !updateNodeCommissionRateRes {
 			c.logger.WithContext(ctx).Errorf("Failed to update commission rate: %s", err.Error())
+			return errors.New("Failed to update coommission rate")
 		}
-		return updateNodeCommissionRateRes
 	}
 
 	return true
