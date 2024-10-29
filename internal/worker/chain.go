@@ -81,6 +81,9 @@ func NewChain(
 	verifierAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 	// get nodeInfor
 	nodeInfos, err := protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, verifierAddress)
+	if err != nil {
+		return nil, errors.Wrap(err, "get node info failed")
+	}
 
 	cacheIns := cache.New(5*time.Minute, 10*time.Minute)
 
@@ -131,17 +134,20 @@ func (c *Chain) Start(ctx context.Context) error {
 
 	nodeInfos, err := c.protocolServiceContractObj.NodeInfos(&bind.CallOpts{}, c.verifierAddress)
 	if err != nil {
-		c.logger.Errorf("NodeInfos error: %s", err.Error())
+		return errors.Wrap(err, "NodeInfos error")
 	}
 	c.logger.WithContext(ctx).Infof("nodeInfos: %v", nodeInfos)
-	if c.beforeScanEvent(ctx, nodeInfos.Id, nodeInfos.Claimer, nodeInfos.CommissionRate) {
-		// Monitor and verify on-chain TEE attestations
-		go c.queryAndVerify(ctx)
-		//	// submit verify result to gasless service
-		go c.submitVerifyResult(ctx)
-		//	// Monitor errors arising from querying and posting processes
-		go c.monitorErrors(ctx)
+
+	if err = c.beforeScanEvent(ctx, nodeInfos.Id, nodeInfos.Claimer, nodeInfos.CommissionRate); err != nil {
+		return errors.Wrap(err, "beforeScanEvent error")
 	}
+
+	// Monitor and verify on-chain TEE attestations
+	go c.queryAndVerify(ctx)
+	//	// submit verify result to gasless service
+	go c.submitVerifyResult(ctx)
+	//	// Monitor errors arising from querying and posting processes
+	go c.monitorErrors(ctx)
 	// monitor exit
 	go c.monitorExit(ctx)
 
@@ -324,7 +330,7 @@ func (c *Chain) queryChain(ctx context.Context) error {
 	return nil
 }
 
-func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaimer common.Address, commissionRate uint32) bool {
+func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaimer common.Address, commissionRate uint32) error {
 	nodeAddress := c.verifierAddress
 	// Get the current timestamp
 	timestamp := big.NewInt(time.Now().Unix())
@@ -332,9 +338,9 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 
 	// Not the first time setup, update config if needed.
 	if nodeID != 0 {
-		if res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime); !res {
+		if err := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime); err != nil {
 			c.logger.WithContext(ctx).Error("Failed to update node configuration.")
-			return res
+			return err
 		}
 		// Fix: add delay to make sure gasless server detects the node online event
 		time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
@@ -344,29 +350,31 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 	isOnline, err := c.checkIsOnline(nodeAddress)
 	if err != nil {
 		c.logger.Errorf("checkIsOnline error: %s", err.Error())
-		return false
+		return err
 	}
 
 	// if node is not online or first time register on chain
 	if !isOnline {
-		c.logger.Errorf("node [%s] is offline, waiting online", nodeAddress.Hex())
+		c.logger.Infof("node [%s] is offline, waiting online", nodeAddress.Hex())
 		replaceNodeReq := &gasless.ExplorerReplacedNodeRequest{
 			VerifierAddr: nodeAddress.Hex(),
 		}
-		replacedNodeResp, err := c.gaslessClient.ExplorerReplacedNode(context.Background(), replaceNodeReq)
+		replacedNodeResp, err := c.gaslessClient.ExplorerReplacedNode(ctx, replaceNodeReq)
 		if err != nil {
-			return false
+			return err
 		}
 		replaceNode := common.HexToAddress(replacedNodeResp.Data.ReplacedAddr)
 		// Send Transaction
-		enterRes, err := NodeEnterByGaslessService(context.Background(), c, replaceNode, expiredTime)
+		enterRes, err := NodeEnterByGaslessService(ctx, c, replaceNode, expiredTime)
 		if err != nil {
 			c.logger.WithContext(ctx).Errorf("Failed to launch verifier node: %s: %s", err.Error())
 		}
 
 		if !enterRes {
 			c.logger.WithContext(ctx).Error("enterRes is false")
-			return enterRes
+			if err != nil {
+				return err
+			}
 		}
 
 		// Need to set commission and rewards if it is first time setup
@@ -374,34 +382,33 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 			// Fix: add delay to make sure gasless server detects the node online event
 			time.Sleep(time.Duration(c.cf.Chain.ReportDelay) * time.Second)
 
-			res := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime)
-			if !res {
+			if err := c.updateNodeConfigIfNeeded(ctx, rewardClaimer, commissionRate, expiredTime); err != nil {
 				c.logger.WithContext(ctx).Error("Failed to update node configuration.")
+				return err
 			}
-			return res
 		}
 
 	}
-	return true
+	return nil
 }
 
-func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer common.Address, commissionRate uint32, expiredTime *big.Int) bool {
+func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer common.Address, commissionRate uint32, expiredTime *big.Int) error {
 	c.logger.WithContext(ctx).Infof(
-		"Update node config if needed. On-chain claimer: %s, config claimer: %s; on-chain commission: %d, config commission: %.2f",
+		"Update node config if needed. On-chain claimer: %s, config claimer: %s; on-chain commission: %.2f, config commission: %.2f",
 		rewardClaimer.Hex(),
 		c.cf.Wallet.RewardClaimerAddr,
-		commissionRate,
+		float64(commissionRate)/100,
 		c.cf.Wallet.CommissionRate/100,
 	)
 	// gas model: reward claimer is current node address
 	if !c.cf.Chain.EnableGasMode {
-		if strings.ToLower(c.cf.Wallet.RewardClaimerAddr) != strings.ToLower(rewardClaimer.Hex()) {
+		if strings.EqualFold(strings.ToLower(c.cf.Wallet.RewardClaimerAddr), strings.ToLower(rewardClaimer.Hex())) {
 			c.logger.WithContext(ctx).Infof("Reward recipient address updated to %s.", c.cf.Wallet.RewardClaimerAddr)
 			// Send Transaction
 			updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
 			if err2 != nil || !updateRewardClaimerRes {
 				c.logger.WithContext(ctx).Errorf("Failed to update reward recipient address: %s", err2.Error())
-				return false
+				return errors.New("update node reward failed")
 			}
 		}
 	}
@@ -409,14 +416,14 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 	if int(c.cf.Wallet.CommissionRate) != int(commissionRate) {
 		c.logger.WithContext(ctx).Infof("Commission rate updated to %d.", c.cf.Wallet.CommissionRate)
 		// Send Transaction
-		updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(context.Background(), c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
+		updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(ctx, c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
 		if err != nil || !updateNodeCommissionRateRes {
 			c.logger.WithContext(ctx).Errorf("Failed to update commission rate: %s", err.Error())
-			return false
+			return errors.New("update commission failed")
 		}
 	}
 
-	return true
+	return nil
 }
 
 // Check node is or not online
