@@ -394,10 +394,10 @@ func (c *Chain) beforeScanEvent(ctx context.Context, nodeID uint32, rewardClaime
 
 func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer common.Address, commissionRate uint32, expiredTime *big.Int) error {
 	c.logger.WithContext(ctx).Infof(
-		"Update node config if needed. On-chain claimer: %s, config claimer: %s; on-chain commission: %d, config commission: %.2f",
+		"Update node config if needed. On-chain claimer: %s, config claimer: %s; on-chain commission: %.2f, config commission: %.2f",
 		rewardClaimer.Hex(),
 		c.cf.Wallet.RewardClaimerAddr,
-		commissionRate,
+		float64(commissionRate)/100,
 		c.cf.Wallet.CommissionRate/100,
 	)
 	// gas model: reward claimer is current node address
