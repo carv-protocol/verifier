@@ -6,8 +6,9 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"github.com/andybalholm/brotli"
 	"io/ioutil"
+
+	"github.com/andybalholm/brotli"
 )
 
 func VerifyAttestation(data string, identity, tcb, trusted string) (bool, error) {
