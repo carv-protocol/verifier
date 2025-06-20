@@ -125,14 +125,18 @@ func main() {
 	}
 
 	if flagVar.Conf != "" {
-		flagVar.RewardAddress = bc.Wallet.RewardClaimerAddr
-		flagVar.CommissionRate = bc.Wallet.CommissionRate
+		if flagVar.RewardAddress == "" {
+			flagVar.RewardAddress = bc.Wallet.RewardClaimerAddr
+		}
+		if flagVar.CommissionRate == 0 {
+			flagVar.CommissionRate = bc.Wallet.CommissionRate
+		}
 	}
-	if common.IsHexAddress(flagVar.RewardAddress) == false {
+	if !common.IsHexAddress(flagVar.RewardAddress) {
 		panic("invalid reward address")
 	}
 
-	if flagVar.CommissionRate < 0 || flagVar.CommissionRate > 100 {
+	if flagVar.CommissionRate < 0 || flagVar.CommissionRate > 20 {
 		panic("invalid commission rate")
 	}
 	bc.Wallet.RewardClaimerAddr = flagVar.RewardAddress

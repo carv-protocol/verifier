@@ -171,7 +171,6 @@ wallet:
 docker run -d --name verifier -v /<Path To This Repository>/verifier/configs:/data/conf -v /<Path To Keystore direction>:/data/keystore carvprotocol/verifier:mainnet
 ```
 
-
 ### Configuration
 
 ```yaml
@@ -209,7 +208,7 @@ signature:
   domain_version: "1.0.0"
   expired_time: 3600
 gasless_service:
-  url: "https://interface.carv.io"
+  url: "https://interface-api.carv.io"
 ```
 
 ## Other Configuration

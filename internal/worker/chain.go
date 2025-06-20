@@ -402,7 +402,7 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 	)
 	// gas model: reward claimer is current node address
 	if !c.cf.Chain.EnableGasMode {
-		if strings.EqualFold(strings.ToLower(c.cf.Wallet.RewardClaimerAddr), strings.ToLower(rewardClaimer.Hex())) {
+		if !strings.EqualFold(strings.ToLower(c.cf.Wallet.RewardClaimerAddr), strings.ToLower(rewardClaimer.Hex())) {
 			c.logger.WithContext(ctx).Infof("Reward recipient address updated to %s.", c.cf.Wallet.RewardClaimerAddr)
 			// Send Transaction
 			updateRewardClaimerRes, err2 := UpdateNodeRewardClaimerByGaslessService(ctx, c, common.HexToAddress(c.cf.Wallet.RewardClaimerAddr), expiredTime)
@@ -414,7 +414,7 @@ func (c *Chain) updateNodeConfigIfNeeded(ctx context.Context, rewardClaimer comm
 	}
 
 	if int(c.cf.Wallet.CommissionRate) != int(commissionRate) {
-		c.logger.WithContext(ctx).Infof("Commission rate updated to %d.", c.cf.Wallet.CommissionRate)
+		c.logger.WithContext(ctx).Infof("Commission rate updated to %.2f.", c.cf.Wallet.CommissionRate)
 		// Send Transaction
 		updateNodeCommissionRateRes, err := UpdateNodeCommissionRateByGaslessService(ctx, c, uint32(c.cf.Wallet.CommissionRate), expiredTime)
 		if err != nil || !updateNodeCommissionRateRes {

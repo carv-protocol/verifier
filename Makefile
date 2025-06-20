@@ -46,7 +46,7 @@ api:
 .PHONY: build
 # build
 build:
-	mkdir -p bin/ && cd cmd/verifier && go build -ldflags "-X main.Version=$(VERSION)" -o ../../bin/ ./...
+	mkdir -p bin/ && cd cmd/verifier && go build -ldflags "-X main.Version=$(VERSION)" -ldflags=-checklinkname=0 -o ../../bin/ ./...
 
 .PHONY: build-all
 # build for all environments

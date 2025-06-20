@@ -11,15 +11,14 @@ require (
 	github.com/samber/lo v1.39.0
 	go.uber.org/automaxprocs v1.5.2
 	google.golang.org/genproto/googleapis/api v0.0.0-20230629202037-9506855d4529
-	google.golang.org/grpc v1.56.3
+	google.golang.org/grpc v1.56.3 // indirect
 	google.golang.org/protobuf v1.32.0
-	gorm.io/driver/mysql v1.5.6 // indirect
-	gorm.io/gen v0.3.25
 	gorm.io/gorm v1.25.9
-	gorm.io/plugin/dbresolver v1.5.0
 )
 
 require github.com/patrickmn/go-cache v2.1.0+incompatible
+
+require github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 
 require (
 	github.com/DataDog/zstd v1.4.5 // indirect
@@ -57,7 +56,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-playground/form/v4 v4.2.1 // indirect
-	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
@@ -107,7 +105,6 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
-	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/urfave/cli/v2 v2.25.7 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.opentelemetry.io/otel v1.19.0 // indirect
@@ -127,8 +124,5 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	gorm.io/datatypes v1.1.1-0.20230130040222-c43177d3cf8c // indirect
-	gorm.io/driver/postgres v1.5.7 // indirect
-	gorm.io/hints v1.1.0 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
